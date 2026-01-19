@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citizen Case Reporting Portal</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            green: '#006644', // Nigeria Green
+                            light: '#E6F2ED',
+                            dark: '#004d33',
+                            accent: '#D4AF37', // Gold accent
+                            danger: '#ef4444',
+                            warning: '#f59e0b',
+                            info: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Merriweather', 'serif'],
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f3f4f6;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(153,49%,48%,0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(153,49%,48%,0.1) 0px, transparent 50%);
+        }
+
+        .input-group { transition: all 0.3s ease; }
+        .input-group:focus-within label { color: #006644; }
+        .input-group:focus-within i { color: #006644; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #006644; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #004d33; }
+
+        /* Map Marker Blinking Animation */
+        .blinking-marker {
+            background-color: rgba(239, 68, 68, 0.7);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+            animation: pulse-red 1.5s infinite;
+        }
+        .urgent-marker {
+            background-color: rgba(245, 158, 11, 0.7);
+            animation: pulse-yellow 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        @keyframes pulse-yellow {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        /* Print Styles */
+        @media print {
+            body * { visibility: hidden; }
+            #receipt-section, #receipt-section * { visibility: visible; }
+            #receipt-section {
+                position: absolute; left: 0; top: 0; width: 100%;
+                margin: 0; padding: 20px; background: white;
+                box-shadow: none; border: 2px solid #000;
+            }
+            .no-print { display: none !important; }
+        }
+
+        .hidden-view { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 antialiased flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-brand-green text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchView('user')">
+                <div class="bg-white p-1 rounded-lg w-12 h-12 flex items-center justify-center shadow-md overflow-hidden">
+                    <img src="https://www.nigeriarights.gov.ng/images/Official-Logo-RESIZED.jpeg" alt="NHRC Logo" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight" data-i18n="portal_title">National Rights<br>Reporting Portal</h1>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Language Selector -->
+                <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-brand-dark text-white text-sm rounded border border-white/20 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                    <option value="en">English</option>
+                    <option value="ha">Hausa</option>
+                    <option value="yo">Yoruba</option>
+                    <option value="ig">Igbo</option>
+                </select>
+
+                <!-- Admin Toggle -->
+                <button onclick="toggleAdmin()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition border border-white/20">
+                    <i class="fas fa-user-shield mr-1"></i> Admin
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Social Proof Banner -->
+    <div id="social-proof" class="bg-brand-dark text-white text-xs py-2 overflow-hidden relative">
+        <div class="whitespace-nowrap animate-marquee px-4 flex justify-between container mx-auto max-w-4xl">
+            <span><i class="fas fa-check-circle text-green-400 mr-1"></i> <span data-i18n="sp_resolved">124 cases resolved this week.</span></span>
+            <span class="hidden md:inline"><i class="fas fa-users text-blue-300 mr-1"></i> <span data-i18n="sp_active">2,400 citizens reporting now.</span></span>
+            <span><i class="fas fa-shield-alt text-brand-accent mr-1"></i> <span data-i18n="sp_secure">Secure & Encrypted.</span></span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-7xl relative">
+        
+        <!-- USER VIEW -->
+        <div id="user-view" class="max-w-4xl mx-auto transition-opacity duration-300">
+            <!-- Form Section -->
+            <div id="form-section" class="bg-white rounded-2xl shadow-xl overflow-hidden border-t-4 border-brand-green">
+                
+                <div class="bg-brand-light p-6 border-b border-gray-100 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-2xl font-serif text-brand-dark mb-2" data-i18n="file_complaint">File a Complaint</h2>
+                        <p class="text-gray-600 text-sm" data-i18n="form_desc">Please provide details. Your report is encrypted.</p>
+                    </div>
+                    <div class="hidden md:block text-right">
+                        <div class="text-brand-green font-bold text-2xl">3,019</div>
+                        <div class="text-xs text-gray-500 uppercase">Cases Reported in 2025</div>
+                    </div>
+                </div>
+
+                <form id="complaintForm" class="p-6 md:p-8 space-y-8" novalidate>
+                    
+                    <!-- Alert Box for Validation Errors -->
+                    <div id="error-box" class="hidden bg-red-50 border-l-4 border-red-500 p-4 mb-4 rounded-r">
+                        <div class="flex">
+                            <div class="flex-shrink-0"><i class="fas fa-exclamation-circle text-red-500"></i></div>
+                            <div class="ml-3">
+                                <p class="text-sm text-red-700" id="error-message">Please fix the errors below.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Anonymity -->
+                    <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div>
+                            <h3 class="font-semibold text-gray-700" data-i18n="reporting_method">Reporting Method</h3>
+                            <p class="text-xs text-gray-500" data-i18n="reporting_desc">Choose to reveal identity or remain anonymous.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="anonymousToggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-green"></div>
+                            <span class="ml-3 text-sm font-medium text-gray-700" id="toggleLabel">Standard</span>
+                        </label>
+                    </div>
+
+                    <!-- Personal Details Section -->
+                    <div id="personal-details" class="space-y-6 transition-all duration-300">
+                        <h3 class="text-lg font-semibold text-brand-dark border-l-4 border-brand-accent pl-3" data-i18n="complainant_details">Complainant Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="input-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="full_name">Full Name</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-user"></i></span>
+                                    <input type="text" id="fullName" data-i18n-placeholder="ph_fullname" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Firstname Lastname">
+                                </div>
+                                <p class="text-xs text-red-500 hidden mt-1" id="name-error">Please enter both First and Last name.</p>
+                            </div>
+                            <div class="input-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="phone">Phone Number</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" id="phone" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" data-i18n-placeholder="ph_phone" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="08012345678">
+                                </div>
+                                <p class="text-xs text-red-500 hidden mt-1" id="phone-error">Please enter a valid 11-digit Nigerian number.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Incident Details -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-semibold text-brand-dark border-l-4 border-brand-accent pl-3" data-i18n="incident_details">Incident Details</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Category -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="category">Category</label>
+                                <select id="category" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
+                                    <option value="" disabled selected data-i18n="opt_sel_cat">Select Category</option>
+                                    <option value="Domestic Violence" data-i18n="opt_cat_dv">Domestic Violence</option>
+                                    <option value="Child Rights" data-i18n="opt_cat_cr">Child Rights</option>
+                                    <option value="Police Brutality" data-i18n="opt_cat_pb">Police Brutality</option>
+                                    <option value="Sexual Violence" data-i18n="opt_cat_sv">Sexual Violence</option>
+                                    <option value="Kidnapping" data-i18n="opt_cat_kd">Kidnapping</option>
+                                    <option value="Other" data-i18n="opt_cat_ot">Other</option>
+                                </select>
+                            </div>
+
+                            <!-- Severity -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="severity">Severity Level</label>
+                                <select id="severity" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
+                                    <option value="" disabled selected data-i18n="opt_sel_sev">Select Level</option>
+                                    <option value="Low" data-i18n="opt_sev_lo">Low (Informational)</option>
+                                    <option value="Medium" data-i18n="opt_sev_me">Medium (Urgent)</option>
+                                    <option value="High" data-i18n="opt_sev_hi">High (Immediate Danger)</option>
+                                </select>
+                            </div>
+
+                            <!-- Date -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="date">Date</label>
+                                <input type="date" id="date" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3">
+                            </div>
+                        </div>
+
+                        <!-- Cascading Location -->
+                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-map-marker-alt text-brand-green mr-1"></i> <span data-i18n="location">Location Data</span></label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <select id="stateSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green">
+                                        <option value="" data-i18n="opt_sel_state">Select State</option>
+                                        <!-- Populated via JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="lgaSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
+                                        <option value="" data-i18n="opt_sel_lga">Select LGA</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="wardSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
+                                        <option value="" data-i18n="opt_sel_ward">Select Ward</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="description">Detailed Description</label>
+                            <textarea id="description" rows="4" data-i18n-placeholder="ph_desc" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Describe the incident..."></textarea>
+                        </div>
+                                <p class="text-xs text-red-500 hidden mt-1" id="name-error">Please enter both First and Last name.</p>
+                            </div>
+                            <div class="input-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="phone">Phone Number</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" id="phone" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="08012345678">
+                                </div>
+                                <p class="text-xs text-red-500 hidden mt-1" id="phone-error">Please enter a valid 11-digit Nigerian number.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Incident Details -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-semibold text-brand-dark border-l-4 border-brand-accent pl-3" data-i18n="incident_details">Incident Details</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Category -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="category">Category</label>
+                                <select id="category" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
+                                    <option value="" disabled selected>Select Category</option>
+                                    <option value="Domestic Violence">Domestic Violence</option>
+                                    <option value="Child Rights">Child Rights</option>
+                                    <option value="Police Brutality">Police Brutality</option>
+                                    <option value="Sexual Violence">Sexual Violence</option>
+                                    <option value="Kidnapping">Kidnapping</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
+                            <!-- Severity -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="severity">Severity Level</label>
+                                <select id="severity" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
+                                    <option value="" disabled selected>Select Level</option>
+                                    <option value="Low">Low (Informational)</option>
+                                    <option value="Medium">Medium (Urgent)</option>
+                                    <option value="High">High (Immediate Danger)</option>
+                                </select>
+                            </div>
+
+                            <!-- Date -->
+                            <div class="input-group md:col-span-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="date">Date</label>
+                                <input type="date" id="date" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3">
+                            </div>
+                        </div>
+
+                        <!-- Cascading Location -->
+                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-map-marker-alt text-brand-green mr-1"></i> <span data-i18n="location">Location Data</span></label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <select id="stateSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green">
+                                        <option value="">Select State</option>
+                                        <!-- Populated via JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="lgaSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
+                                        <option value="">Select LGA</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <select id="wardSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
+                                        <option value="">Select Ward</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="description">Detailed Description</label>
+                            <textarea id="description" rows="4" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Describe the incident..."></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="evidence">Evidence Upload (Optional)</label>
+                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors cursor-pointer" onclick="document.getElementById('file-upload').click()">
+                                <div class="space-y-1 text-center">
+                                    <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl"></i>
+                                    <div class="flex text-sm text-gray-600 justify-center">
+                                        <span class="relative cursor-pointer bg-white rounded-md font-medium text-brand-green hover:text-brand-dark">
+                                            <span>Upload a file</span>
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                                    <input id="file-upload" name="file-upload" type="file" class="sr-only">
+                                    <p id="file-name" class="text-xs text-brand-green font-semibold mt-2"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Terms -->
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="terms" type="checkbox" required class="focus:ring-brand-green h-4 w-4 text-brand-green border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="terms" class="font-medium text-gray-700" data-i18n="certify">I hereby certify that the information provided is true.</label>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button type="submit" class="w-full flex justify-center py-4 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-green hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-green transition-transform transform hover:scale-[1.01] active:scale-[0.99] font-bold tracking-wide uppercase">
+                            <span data-i18n="submit_btn">Submit Report</span> <i class="fas fa-paper-plane ml-2 mt-1"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Receipt Section -->
+            <div id="receipt-section" class="hidden transform transition-all duration-500 ease-in-out">
+                <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12 relative overflow-hidden">
+                    <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                        <i class="fas fa-scale-balanced text-9xl"></i>
+                    </div>
+                    <div class="flex justify-center mb-6 no-print">
+                        <div class="checkmark-circle">
+                             <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8 border-b-2 border-brand-green pb-6">
+                        <h2 class="text-3xl font-bold text-brand-dark mb-1" data-i18n="receipt_title">ACKNOWLEDGEMENT RECEIPT</h2>
+                        <p class="text-gray-500 uppercase tracking-widest text-xs">Official Record of Submission</p>
+                    </div>
+
+                    <div class="space-y-6 text-sm md:text-base relative z-10">
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
+                            <p class="text-green-800 font-medium" data-i18n="receipt_msg">Your complaint has been duly received.</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <div class="col-span-2 md:col-span-1">
+                                <p class="text-gray-500 text-xs uppercase">Case ID</p>
+                                <p class="text-xl font-mono font-bold text-brand-dark" id="receipt-id">NHRC-2026-XXXX</p>
+                            </div>
+                            <div class="col-span-2 md:col-span-1 text-right">
+                                <p class="text-gray-500 text-xs uppercase">Severity</p>
+                                <p class="font-bold text-brand-danger" id="receipt-severity">HIGH</p>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-200 pt-4 mt-4">
+                            <div class="grid grid-cols-1 gap-y-4">
+                                <div><p class="text-gray-500 text-xs uppercase">Complainant</p><p class="font-medium" id="receipt-name">Name</p></div>
+                                <div><p class="text-gray-500 text-xs uppercase">Location</p><p class="font-medium" id="receipt-location">Location</p></div>
+                                <div><p class="text-gray-500 text-xs uppercase">Ward</p><p class="font-medium" id="receipt-ward">Ward</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center no-print">
+                        <button onclick="window.print()" class="flex-1 bg-gray-800 text-white py-3 px-6 rounded-lg hover:bg-gray-900 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button onclick="window.location.reload()" class="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-plus"></i> New Case
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN VIEW (Initially Hidden) -->
+        <div id="admin-view" class="hidden-view space-y-6">
+            <!-- Admin Header -->
+            <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow">
+                <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-chart-line text-brand-green mr-2"></i><span data-i18n="admin_dash">Admin Dashboard</span></h2>
+                <div class="text-sm text-gray-500">Last updated: <span class="font-mono">Just now</span></div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                    <p class="text-gray-500 text-xs uppercase font-bold" data-i18n="admin_total">Total Reports</p>
+                    <p class="text-2xl font-bold">3,019</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                    <p class="text-gray-500 text-xs uppercase font-bold" data-i18n="admin_critical">Critical / High</p>
+                    <p class="text-2xl font-bold text-red-600">412</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+                    <p class="text-gray-500 text-xs uppercase font-bold" data-i18n="admin_pending">Pending</p>
+                    <p class="text-2xl font-bold text-yellow-600">743</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                    <p class="text-gray-500 text-xs uppercase font-bold" data-i18n="admin_resolved">Resolved</p>
+                    <p class="text-2xl font-bold text-green-600">2,276</p>
+                </div>
+            </div>
+
+            <!-- Map and Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Live Map -->
+                <div class="bg-white p-4 rounded-lg shadow h-96 flex flex-col">
+                    <h3 class="font-bold text-gray-700 mb-2" data-i18n="admin_map">Live Incident Map (Nigeria)</h3>
+                    <div id="map" class="flex-grow rounded z-0"></div>
+                </div>
+
+                <!-- Incident Distribution Chart -->
+                <div class="bg-white p-4 rounded-lg shadow h-96">
+                    <h3 class="font-bold text-gray-700 mb-2" data-i18n="admin_cat_chart">Violation Categories</h3>
+                    <div class="relative h-80 w-full">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Trends Bar Chart -->
+             <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-bold text-gray-700 mb-2" data-i18n="admin_trend_chart">Monthly Reporting Trends (2025)</h3>
+                <div class="relative h-64 w-full">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Reports Table -->
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="font-bold text-gray-700" data-i18n="admin_recent">Recent Intake</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" data-i18n="state_col">State</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" data-i18n="cat_col">Category</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" data-i18n="sev_col">Severity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase" data-i18n="status_col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200 text-sm">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9921</td>
+                                <td class="px-6 py-4">Kano</td>
+                                <td class="px-6 py-4">Domestic Violence</td>
+                                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">High</span></td>
+                                <td class="px-6 py-4">Pending</td>
+                            </tr>
+                             <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9922</td>
+                                <td class="px-6 py-4">Lagos</td>
+                                <td class="px-6 py-4">Police Brutality</td>
+                                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Medium</span></td>
+                                <td class="px-6 py-4">Investigating</td>
+                            </tr>
+                             <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9923</td>
+                                <td class="px-6 py-4">Abia</td>
+                                <td class="px-6 py-4">Child Rights</td>
+                                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Low</span></td>
+                                <td class="px-6 py-4">Resolved</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm no-print mt-auto">
+        <p>&copy; 2026 Citizen Reporting Initiative. Powered by Civil Liberty Data Systems.</p>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // --- 1. CONFIGURATION & DATA ---
+
+        // Translations Dictionary
+        const i18n = {
+            en: {
+                portal_title: "National Rights<br>Reporting Portal",
+                sp_resolved: "124 cases resolved this week.",
+                sp_active: "2,400 citizens reporting now.",
+                sp_secure: "Secure & Encrypted.",
+                file_complaint: "File a Complaint",
+                form_desc: "Please provide details. Your report is encrypted.",
+                reporting_method: "Reporting Method",
+                reporting_desc: "Choose to reveal identity or remain anonymous.",
+                complainant_details: "Complainant Details",
+                full_name: "Full Name",
+                phone: "Phone Number",
+                incident_details: "Incident Details",
+                category: "Category",
+                severity: "Severity Level",
+                date: "Date",
+                location: "Location Data",
+                description: "Detailed Description",
+                evidence: "Evidence Upload",
+                certify: "I hereby certify that the information provided is true.",
+                submit_btn: "Submit Report",
+                receipt_title: "ACKNOWLEDGEMENT RECEIPT",
+                receipt_msg: "Your complaint has been duly received and queued for immediate attention.",
+                
+                // Placeholders & Options
+                ph_fullname: "Firstname Lastname",
+                ph_phone: "08012345678",
+                ph_desc: "Describe the incident...",
+                opt_sel_cat: "Select Category",
+                opt_cat_dv: "Domestic Violence",
+                opt_cat_cr: "Child Rights",
+                opt_cat_pb: "Police Brutality",
+                opt_cat_sv: "Sexual Violence",
+                opt_cat_kd: "Kidnapping",
+                opt_cat_ot: "Other",
+                opt_sel_sev: "Select Level",
+                opt_sev_lo: "Low (Informational)",
+                opt_sev_me: "Medium (Urgent)",
+                opt_sev_hi: "High (Immediate Danger)",
+                opt_sel_state: "Select State",
+                opt_sel_lga: "Select LGA",
+                opt_sel_ward: "Select Ward",
+
+                // Admin
+                admin_dash: "Admin Dashboard",
+                admin_total: "Total Reports",
+                admin_critical: "Critical / High",
+                admin_pending: "Pending",
+                admin_resolved: "Resolved",
+                admin_map: "Live Incident Map (Nigeria)",
+                admin_cat_chart: "Violation Categories",
+                admin_trend_chart: "Monthly Reporting Trends (2025)",
+                admin_recent: "Recent Intake",
+                state_col: "State",
+                cat_col: "Category",
+                sev_col: "Severity",
+                status_col: "Status"
+            },
+            ha: {
+                portal_title: "Kofar Bayar da Rahoto<br>na Hakkin Dan Adam",
+                sp_resolved: "An warware kararraki 124 a wannan makon.",
+                sp_active: "Yan kasa 2,400 suna bayar da rahoto yanzu.",
+                sp_secure: "Amintacce & Rufaffe.",
+                file_complaint: "Shigar da Kara",
+                form_desc: "Da fatan za a bayar da cikakkun bayanai. Rahotonku yana da sirri.",
+                reporting_method: "Hanyar Rahoto",
+                reporting_desc: "Zabi bayyana ainihi ko boye suna.",
+                complainant_details: "Bayanin Mai Kara",
+                full_name: "Cikakken Suna",
+                phone: "Lambar Waya",
+                incident_details: "Bayanin Abin da ya faru",
+                category: "Nau'i",
+                severity: "Tsananin Lamari",
+                date: "Kwanan Wata",
+                location: "Wuri",
+                description: "Cikakken Bayani",
+                evidence: "Shaidar Hoto/Takarda",
+                certify: "Na tabbatar da cewa bayanan nan gaskiya ne.",
+                submit_btn: "Aika Rahoto",
+                receipt_title: "RISITIN KARBA",
+                receipt_msg: "An karbi korafin ku kuma yana cikin layi don duba na gaggawa.",
+
+                // Placeholders & Options
+                ph_fullname: "Sunan Farko, Sunan Baya",
+                ph_phone: "08012345678",
+                ph_desc: "Bayyana abin da ya faru...",
+                opt_sel_cat: "Zabi Rukuni",
+                opt_cat_dv: "Cin Zarafin Gida",
+                opt_cat_cr: "Hakkin Yara",
+                opt_cat_pb: "Cin Zarafin 'Yan Sanda",
+                opt_cat_sv: "Cin Zarafin Mata",
+                opt_cat_kd: "Garkuwa da Mutane",
+                opt_cat_ot: "Wani",
+                opt_sel_sev: "Zabi Mataki",
+                opt_sev_lo: "Karami (Sanarwa)",
+                opt_sev_me: "Matsakaici (Gaggawa)",
+                opt_sev_hi: "Babba (Hadari Sosai)",
+                opt_sel_state: "Zabi Jiha",
+                opt_sel_lga: "Zabi Karamar Hukuma",
+                opt_sel_ward: "Zabi Unguwa",
+
+                // Admin
+                admin_dash: "Allon Gudanarwa",
+                admin_total: "Jimlar Rahoto",
+                admin_critical: "Mai Tsanani",
+                admin_pending: "Ana Jira",
+                admin_resolved: "An Warware",
+                admin_map: "Taswirar Lamari (Najeriya)",
+                admin_cat_chart: "Rukunin Laifi",
+                admin_trend_chart: "Yanayin Rahoto na Wata (2025)",
+                admin_recent: "Rahoton Kwanan Nan",
+                state_col: "Jiha",
+                cat_col: "Rukuni",
+                sev_col: "Tsannani",
+                status_col: "Matsayi"
+            },
+            yo: {
+                portal_title: "Oju-ọna Ijabọ<br>Eto Ọmọ Eniyan",
+                sp_resolved: "A ti yanju awọn ẹjọ 124 ni ọsẹ yii.",
+                sp_active: "Awọn ara ilu 2,400 n jabo ni bayi.",
+                sp_secure: "O ni aabo & O ni asiri.",
+                file_complaint: "Fi Ẹsun Kan",
+                form_desc: "Jọwọ pese awọn alaye. Ijabọ rẹ ni asiri.",
+                reporting_method: "Ọna Ijabọ",
+                reporting_desc: "Yan lati ṣafihan idanimọ tabi wa ni ailorukọ.",
+                complainant_details: "Awọn alaye Olufisun",
+                full_name: "Orukọ Kikun",
+                phone: "Nọmba foonu",
+                incident_details: "Awọn alaye Iṣẹlẹ",
+                category: "Ẹka",
+                severity: "Ipele Pataki",
+                date: "Ọjọ",
+                location: "Ibi Data",
+                description: "Apejuwe Kikun",
+                evidence: "Ẹri Ikojọpọ",
+                certify: "Mo jẹrisi pe alaye ti a pese jẹ otitọ.",
+                submit_btn: "Fi Ijabọ Ranṣẹ",
+                receipt_title: "IWE ẸRI GBIGBA",
+                receipt_msg: "A ti gba ẹsun rẹ daradara ati pe a ti tò si laini fun akiyesi lẹsẹkẹsẹ.",
+
+                // Placeholders & Options
+                ph_fullname: "Orukọ Akọkọ, Orukọ Idile",
+                ph_phone: "08012345678",
+                ph_desc: "Ṣe apejuwe iṣẹlẹ naa...",
+                opt_sel_cat: "Yan Ẹka",
+                opt_cat_dv: "Iwa-ipa Abele",
+                opt_cat_cr: "Eto Ọmọde",
+                opt_cat_pb: "Iwa-ipa Ọlọpa",
+                opt_cat_sv: "Iwa-ipa Ibalopo",
+                opt_cat_kd: "Jinigbe",
+                opt_cat_ot: "Omiran",
+                opt_sel_sev: "Yan Ipele",
+                opt_sev_lo: "Kekere (Ifitonileti)",
+                opt_sev_me: "Aarin (Pajawiri)",
+                opt_sev_hi: "Giga (Ewu Lẹsẹkẹsẹ)",
+                opt_sel_state: "Yan Ipinle",
+                opt_sel_lga: "Yan Ijọba Ibile",
+                opt_sel_ward: "Yan Agbegbe",
+
+                // Admin
+                admin_dash: "Dasibodu Abojuto",
+                admin_total: "Apapọ Ijabọ",
+                admin_critical: "Pataki / Giga",
+                admin_pending: "Ni iduro",
+                admin_resolved: "Ti yanju",
+                admin_map: "Maapu Iṣẹlẹ (Nigeria)",
+                admin_cat_chart: "Awọn ẹka irufin",
+                admin_trend_chart: "Awọn aṣa Ijabọ Oṣooṣu",
+                admin_recent: "Ijabọ Laipẹ",
+                state_col: "Ipinle",
+                cat_col: "Ẹka",
+                sev_col: "Ipele",
+                status_col: "Ipo"
+            },
+            ig: {
+                portal_title: "Ọnụ ụzọ Mkpesa<br>Ikike Mmadụ",
+                sp_resolved: "Edowazila ikpe 124 n'izu a.",
+                sp_active: "Ụmụ amaala 2,400 na-akọ akụkọ ugbu a.",
+                sp_secure: "Echedoro & Ezoro ezo.",
+                file_complaint: "Wepụta Mkpesa",
+                form_desc: "Biko nye nkọwa zuru ezu. Mkpesa gị bụ ihe nzuzo.",
+                reporting_method: "Usoro Mkpesa",
+                reporting_desc: "Họrọ ikpughe onye ị bụ ma ọ bụ zoo aha.",
+                complainant_details: "Nkọwa Onye Mkpesa",
+                full_name: "Aha Zuru Oke",
+                phone: "Nọmba Ekwentị",
+                incident_details: "Nkọwa Ihe Mere",
+                category: "Kategọri",
+                severity: "Ọkwa Dị Mkpa",
+                date: "Ụbọchị",
+                location: "Ebe",
+                description: "Nkọwa Zuru Ezu",
+                evidence: "Mbute Ihe Akaebe",
+                certify: "Ana m agba akaebe na ozi a bụ eziokwu.",
+                submit_btn: "Nyefee Mkpesa",
+                receipt_title: "RISITI NATA",
+                receipt_msg: "Anatawo mkpesa gị nke ọma ma tinye ya n'ahịrị maka nlebara anya ngwa ngwa.",
+
+                // Placeholders & Options
+                ph_fullname: "Aha Mbụ, Aha Ikpeazụ",
+                ph_phone: "08012345678",
+                ph_desc: "Kọwaa ihe mere...",
+                opt_sel_cat: "Họrọ Kategọri",
+                opt_cat_dv: "Ihe Ike n'Ezinụlọ",
+                opt_cat_cr: "Ikike Ụmụaka",
+                opt_cat_pb: "Mmegbu Ndị Uwe Ojii",
+                opt_cat_sv: "Ihe Ike Mmekọahụ",
+                opt_cat_kd: "Ịtọrọ Mmadụ",
+                opt_cat_ot: "Ọzọ",
+                opt_sel_sev: "Họrọ Ọkwa",
+                opt_sev_lo: "Obere (Ozi)",
+                opt_sev_me: "Ọkara (Ngwa Ngwa)",
+                opt_sev_hi: "Elu (Ihe Ize Ndụ)",
+                opt_sel_state: "Họrọ Steeti",
+                opt_sel_lga: "Họrọ LGA",
+                opt_sel_ward: "Họrọ Wọọdụ",
+
+                // Admin
+                admin_dash: "Dashboard Nchịkwa",
+                admin_total: "Mkpesa Niile",
+                admin_critical: "Dị oke mkpa",
+                admin_pending: "Na-echere",
+                admin_resolved: "Edoziri",
+                admin_map: "Maapụ Ihe Mere (Nigeria)",
+                admin_cat_chart: "Kategọri Mmebi",
+                admin_trend_chart: "Usoro Mkpesa Kwa Ọnwa",
+                admin_recent: "Mkpesa Ọhụrụ",
+                state_col: "Steeti",
+                cat_col: "Kategọri",
+                sev_col: "Ọkwa",
+                status_col: "Ọnọdụ"
+            }
+        };
+
+        // Fallback Location Data (Subset)
+        const fallbackLocations = [
+            {
+                "state": "Kano",
+                "lgas": [
+                    { "lga": "Kano Municipal", "wards": ["Shahuchi", "Zaitawa", "Tudun Waziri", "Gandun Albasa"] },
+                    { "lga": "Nassarawa", "wards": ["Gwagwarwa", "Tudun Murtala", "Dakata", "Giginyu"] },
+                    { "lga": "Dala", "wards": ["Gwammaja", "Adakawa", "Bakin Ruwa", "Gobirawa"] }
+                ]
+            },
+            {
+                "state": "Lagos",
+                "lgas": [
+                    { "lga": "Ikeja", "wards": ["Alausa", "Agidingbi", "Oregun", "Ikeja GRA"] },
+                    { "lga": "Eti-Osa", "wards": ["Victoria Island", "Ikoyi", "Lekki", "Ajah"] },
+                    { "lga": "Alimosho", "wards": ["Egbeda", "Ikotun", "Igando", "Ipaja"] }
+                ]
+            },
+            {
+                "state": "Abia",
+                "lgas": [
+                    { "lga": "Aba North", "wards": ["Ariaria", "Ogbor Hill", "Eziama"] },
+                    { "lga": "Umuahia North", "wards": ["Ibeku East", "Ndume", "Urban 1"] }
+                ]
+            }
+        ];
+
+        let locationData = fallbackLocations; // Default to fallback initially
+
+        // --- 2. INITIALIZATION ---
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Attempt to fetch full JSON
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/afeibukun/nigerian-state-lgas-wards-polling-units/refs/heads/main/states-and-lgas-and-wards.json');
+                if (response.ok) {
+                    locationData = await response.json();
+                    console.log("Full location data loaded");
+                }
+            } catch (error) {
+                console.warn("Could not load external location data, using fallback.", error);
+            }
+
+            initLocationSelectors();
+            initAnonymityToggle();
+        });
+
+        // --- 3. HELPER FUNCTIONS ---
+
+        function changeLanguage(lang) {
+            // Update Text Content
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (i18n[lang] && i18n[lang][key]) {
+                    element.innerHTML = i18n[lang][key]; 
+                }
+            });
+            
+            // Update Placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                if (i18n[lang] && i18n[lang][key]) {
+                    element.placeholder = i18n[lang][key]; 
+                }
+            });
+        }
+
+        function initAnonymityToggle() {
+            const toggle = document.getElementById('anonymousToggle');
+            const personal = document.getElementById('personal-details');
+            const inputs = personal.querySelectorAll('input');
+            const label = document.getElementById('toggleLabel');
+
+            toggle.addEventListener('change', function() {
+                if (this.checked) {
+                    personal.style.opacity = '0.5';
+                    personal.style.pointerEvents = 'none';
+                    label.textContent = "Anonymous";
+                    inputs.forEach(i => {
+                        i.value = '';
+                        i.removeAttribute('required');
+                    });
+                    // Clear errors
+                    document.getElementById('name-error').classList.add('hidden');
+                    document.getElementById('phone-error').classList.add('hidden');
+                } else {
+                    personal.style.opacity = '1';
+                    personal.style.pointerEvents = 'auto';
+                    label.textContent = "Standard";
+                    inputs.forEach(i => i.setAttribute('required', 'true'));
+                }
+            });
+        }
+
+        function initLocationSelectors() {
+            const stateSel = document.getElementById('stateSelect');
+            const lgaSel = document.getElementById('lgaSelect');
+            const wardSel = document.getElementById('wardSelect');
+
+            // Populate States
+            locationData.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.state.name || s.state; 
+                opt.textContent = (s.state.name || s.state).toUpperCase();
+                stateSel.appendChild(opt);
+            });
+
+            // State Change
+            stateSel.addEventListener('change', function() {
+                // Get current language for dynamic placeholders
+                const lang = document.getElementById('langSelect').value;
+                const lgaText = i18n[lang]['opt_sel_lga'];
+                const wardText = i18n[lang]['opt_sel_ward'];
+
+                lgaSel.innerHTML = `<option value="" data-i18n="opt_sel_lga">${lgaText}</option>`;
+                wardSel.innerHTML = `<option value="" data-i18n="opt_sel_ward">${wardText}</option>`;
+                wardSel.disabled = true;
+
+                if (this.value) {
+                    lgaSel.disabled = false;
+                    const stateObj = locationData.find(s => (s.state.name || s.state) == this.value);
+                    if (stateObj) {
+                        stateObj.lgas.forEach(l => {
+                            const opt = document.createElement('option');
+                            opt.value = l.lga.name || l.lga;
+                            opt.textContent = (l.lga.name || l.lga).toUpperCase();
+                            lgaSel.appendChild(opt);
+                        });
+                    }
+                } else {
+                    lgaSel.disabled = true;
+                }
+            });
+
+            // LGA Change
+            lgaSel.addEventListener('change', function() {
+                const lang = document.getElementById('langSelect').value;
+                const wardText = i18n[lang]['opt_sel_ward'];
+                wardSel.innerHTML = `<option value="" data-i18n="opt_sel_ward">${wardText}</option>`;
+                
+                if (this.value) {
+                    wardSel.disabled = false;
+                    const stateObj = locationData.find(s => (s.state.name || s.state) == stateSel.value);
+                    const lgaObj = stateObj.lgas.find(l => (l.lga.name || l.lga) == this.value);
+                    if (lgaObj && lgaObj.wards) {
+                        lgaObj.wards.forEach(w => {
+                            const opt = document.createElement('option');
+                            const wName = typeof w === 'string' ? w : w.name;
+                            opt.value = wName;
+                            opt.textContent = wName;
+                            wardSel.appendChild(opt);
+                        });
+                    }
+                } else {
+                    wardSel.disabled = true;
+                }
+            });
+        }
+
+        // --- 4. FORM VALIDATION & SUBMISSION ---
+
+        document.getElementById('complaintForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validation
+            let isValid = true;
+            const isAnonymous = document.getElementById('anonymousToggle').checked;
+            const errorBox = document.getElementById('error-box');
+            
+            // Name Validation (First & Last)
+            if (!isAnonymous) {
+                const name = document.getElementById('fullName').value.trim();
+                const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+(\s[a-zA-Z]+)*$/; // At least two words
+                if (!nameRegex.test(name)) {
+                    document.getElementById('name-error').classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    document.getElementById('name-error').classList.add('hidden');
+                }
+
+                // Phone Validation (Digits only, 11 length)
+                const phone = document.getElementById('phone').value.trim();
+                const phoneRegex = /^\d{11}$/;
+                if (!phoneRegex.test(phone)) {
+                    document.getElementById('phone-error').classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    document.getElementById('phone-error').classList.add('hidden');
+                }
+            }
+
+            // Location Validation
+            if (!document.getElementById('stateSelect').value || 
+                !document.getElementById('lgaSelect').value || 
+                !document.getElementById('wardSelect').value) {
+                isValid = false;
+                // Just using generic error for this demo
+            }
+
+            if (!isValid) {
+                errorBox.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+
+            errorBox.classList.add('hidden');
+
+            // --- Success ---
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            const severity = document.getElementById('severity').value;
+            const state = document.getElementById('stateSelect').value;
+            const ward = document.getElementById('wardSelect').value;
+            const name = isAnonymous ? "Anonymous" : document.getElementById('fullName').value;
+
+            setTimeout(() => {
+                document.getElementById('form-section').classList.add('hidden');
+                document.getElementById('receipt-section').classList.remove('hidden');
+
+                document.getElementById('receipt-id').textContent = `NHRC-2026-${Math.floor(Math.random() * 9000) + 1000}`;
+                document.getElementById('receipt-severity').textContent = severity.toUpperCase();
+                document.getElementById('receipt-severity').className = severity === 'High' ? 'font-bold text-red-600' : (severity === 'Medium' ? 'font-bold text-yellow-600' : 'font-bold text-green-600');
+                document.getElementById('receipt-name').textContent = name;
+                document.getElementById('receipt-location').textContent = state.toUpperCase();
+                document.getElementById('receipt-ward').textContent = ward;
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 1500);
+        });
+
+        // --- 5. ADMIN DASHBOARD & MAP ---
+
+        let mapInitialized = false;
+
+        function switchView(viewName) {
+            if (viewName === 'user') {
+                document.getElementById('user-view').classList.remove('hidden-view');
+                document.getElementById('admin-view').classList.add('hidden-view');
+            } else if (viewName === 'admin') {
+                document.getElementById('user-view').classList.add('hidden-view');
+                document.getElementById('admin-view').classList.remove('hidden-view');
+                if (!mapInitialized) initAdminDashboard();
+            }
+        }
+
+        function toggleAdmin() {
+            const adminView = document.getElementById('admin-view');
+            if (adminView.classList.contains('hidden-view')) {
+                switchView('admin');
+            } else {
+                switchView('user');
+            }
+        }
+
+        function initAdminDashboard() {
+            mapInitialized = true;
+
+            // 1. Initialize Map (Center Nigeria)
+            const map = L.map('map').setView([9.0820, 8.6753], 6); 
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Mock Data for Map (Expanded to >10 locations across Nigeria)
+            const reports = [
+                { lat: 11.9961, lng: 8.5167, type: 'High', loc: 'Kano' },
+                { lat: 6.5244, lng: 3.3792, type: 'Medium', loc: 'Lagos' },
+                { lat: 9.0765, lng: 7.3986, type: 'Low', loc: 'Abuja' },
+                { lat: 7.3775, lng: 3.9470, type: 'High', loc: 'Ibadan' },
+                { lat: 4.8156, lng: 7.0498, type: 'High', loc: 'Port Harcourt' },
+                { lat: 13.0059, lng: 5.2476, type: 'Medium', loc: 'Sokoto' },
+                { lat: 11.8311, lng: 13.1510, type: 'High', loc: 'Maiduguri' },
+                { lat: 6.4584, lng: 7.5464, type: 'Low', loc: 'Enugu' },
+                { lat: 6.3350, lng: 5.6037, type: 'Medium', loc: 'Benin City' },
+                { lat: 9.8965, lng: 8.8583, type: 'Low', loc: 'Jos' },
+                { lat: 10.5105, lng: 7.4165, type: 'Medium', loc: 'Kaduna' },
+                { lat: 4.9757, lng: 8.3417, type: 'High', loc: 'Calabar' },
+                { lat: 8.4799, lng: 4.5418, type: 'Low', loc: 'Ilorin' }
+            ];
+
+            reports.forEach(r => {
+                const className = r.type === 'High' ? 'blinking-marker' : (r.type === 'Medium' ? 'urgent-marker' : '');
+                const color = r.type === 'High' ? 'red' : (r.type === 'Medium' ? 'orange' : 'green');
+                
+                // Using divIcon for custom CSS animation
+                const icon = L.divIcon({
+                    className: className,
+                    iconSize: [20, 20]
+                });
+
+                if (className) {
+                    L.marker([r.lat, r.lng], { icon: icon }).addTo(map)
+                    .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity<br>Incident Reported`);
+                } else {
+                    L.circleMarker([r.lat, r.lng], { color: color, radius: 8 }).addTo(map)
+                     .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity`);
+                }
+            });
+
+            // 2. Initialize Charts
+            // Category Pie Chart
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Domestic Violence', 'Police Brutality', 'Child Rights', 'Economic', 'Other'],
+                    datasets: [{
+                        data: [45, 25, 15, 10, 5],
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6b7280']
+                    }]
+                },
+                options: { maintainAspectRatio: false }
+            });
+
+            // Trend Bar Chart
+            const ctx2 = document.getElementById('trendChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Reports Filed',
+                        data: [120, 190, 300, 250, 400, 450],
+                        backgroundColor: '#006644'
+                    }]
+                },
+                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+    </script>
+</body>
+</html>
