@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#006644">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Citizen Case Reporting Portal</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -63,6 +67,17 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #006644; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #004d33; }
+
+        /* Marquee Animation */
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marquee 25s linear infinite;
+        }
 
         /* Map Marker Blinking Animation */
         .blinking-marker {
@@ -126,6 +141,11 @@
 </head>
 <body class="min-h-screen text-gray-800 antialiased flex flex-col relative">
 
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="hidden bg-gray-800 text-white text-center py-2 text-sm font-semibold sticky top-0 z-[60]">
+        <i class="fas fa-wifi-slash mr-2"></i> You are currently offline. Reports will be saved locally.
+    </div>
+
     <!-- Navbar -->
     <nav class="bg-brand-green text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
@@ -139,6 +159,11 @@
             </div>
             
             <div class="flex items-center space-x-4">
+                 <!-- Track Case Button -->
+                <button onclick="switchView('track')" class="hidden md:flex items-center text-xs bg-brand-dark hover:bg-brand-accent hover:text-brand-dark text-white px-3 py-1.5 rounded transition border border-white/20">
+                    <i class="fas fa-search mr-1"></i> <span data-i18n="nav_track">Track Case</span>
+                </button>
+
                 <!-- Language Selector -->
                 <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-brand-dark text-white text-sm rounded border border-white/20 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-accent">
                     <option value="en">English</option>
@@ -157,17 +182,17 @@
 
     <!-- Social Proof Banner -->
     <div id="social-proof" class="bg-brand-dark text-white text-xs py-2 overflow-hidden relative">
-        <div class="whitespace-nowrap animate-marquee px-4 flex justify-between container mx-auto max-w-4xl">
-            <span><i class="fas fa-check-circle text-green-400 mr-1"></i> <span data-i18n="sp_resolved">124 cases resolved this week.</span></span>
-            <span class="hidden md:inline"><i class="fas fa-users text-blue-300 mr-1"></i> <span data-i18n="sp_active">2,400 citizens reporting now.</span></span>
-            <span><i class="fas fa-shield-alt text-brand-accent mr-1"></i> <span data-i18n="sp_secure">Secure & Encrypted.</span></span>
+        <div class="whitespace-nowrap animate-marquee px-4 flex justify-between container mx-auto max-w-4xl w-full">
+            <span class="mr-8"><i class="fas fa-check-circle text-green-400 mr-1"></i> <span data-i18n="sp_resolved">124 cases resolved this week.</span></span>
+            <span class="mr-8"><i class="fas fa-users text-blue-300 mr-1"></i> <span data-i18n="sp_active">2,400 citizens reporting now.</span></span>
+            <span class="mr-8"><i class="fas fa-shield-alt text-brand-accent mr-1"></i> <span data-i18n="sp_secure">Secure & Encrypted.</span></span>
         </div>
     </div>
 
     <!-- Main Content -->
     <main class="flex-grow container mx-auto px-4 py-6 max-w-7xl relative pb-24">
         
-        <!-- USER VIEW -->
+        <!-- USER VIEW (Form) -->
         <div id="user-view" class="max-w-4xl mx-auto transition-opacity duration-300">
             <!-- Form Section -->
             <div id="form-section" class="bg-white rounded-2xl shadow-xl overflow-hidden border-t-4 border-brand-green">
@@ -190,7 +215,12 @@
                         <div class="flex">
                             <div class="flex-shrink-0"><i class="fas fa-exclamation-circle text-red-500"></i></div>
                             <div class="ml-3">
-                                <p class="text-sm text-red-700" id="error-message">Please fix the errors below.</p>
+                                <h3 class="text-sm font-medium text-red-800">Submission Error</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul id="error-list" class="list-disc pl-5 space-y-1">
+                                        <!-- Errors injected here -->
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -213,20 +243,18 @@
                         <h3 class="text-lg font-semibold text-brand-dark border-l-4 border-brand-accent pl-3" data-i18n="complainant_details">Complainant Details</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="input-group">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="full_name">Full Name</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="fullName" data-i18n="full_name">Full Name</label>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-user"></i></span>
-                                    <input type="text" id="fullName" data-i18n-placeholder="ph_fullname" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Firstname Lastname">
+                                    <input type="text" id="fullName" aria-required="true" data-i18n-placeholder="ph_fullname" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Firstname Lastname">
                                 </div>
-                                <p class="text-xs text-red-500 hidden mt-1" id="name-error">Please enter both First and Last name.</p>
                             </div>
                             <div class="input-group">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="phone">Phone Number</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="phone" data-i18n="phone">Phone Number</label>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" id="phone" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" data-i18n-placeholder="ph_phone" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="08012345678">
+                                    <input type="tel" id="phone" aria-required="true" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" data-i18n-placeholder="ph_phone" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="08012345678">
                                 </div>
-                                <p class="text-xs text-red-500 hidden mt-1" id="phone-error">Please enter a valid 11-digit Nigerian number.</p>
                             </div>
                         </div>
                     </div>
@@ -238,7 +266,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <!-- Category -->
                             <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="category">Category</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="category" data-i18n="category">Category</label>
                                 <select id="category" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
                                     <option value="" disabled selected data-i18n="opt_sel_cat">Select Category</option>
                                     <option value="Domestic Violence" data-i18n="opt_cat_dv">Domestic Violence</option>
@@ -246,36 +274,46 @@
                                     <option value="Police Brutality" data-i18n="opt_cat_pb">Police Brutality</option>
                                     <option value="Sexual Violence" data-i18n="opt_cat_sv">Sexual Violence</option>
                                     <option value="Kidnapping" data-i18n="opt_cat_kd">Kidnapping</option>
-                                    <option value="Other" data-i18n="opt_cat_ot">Other</option>
+                                    <option value="Other" data-i18n="opt_cat_ot">Other (Specify)</option>
                                 </select>
+                                <!-- Dynamic "Other" Field -->
+                                <input type="text" id="other-category-input" class="hidden mt-2 block w-full rounded-md border-gray-300 shadow-sm text-sm p-2 border" placeholder="Please specify...">
                             </div>
 
                             <!-- Severity -->
                             <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="severity">Severity Level</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="severity" data-i18n="severity">Severity Level</label>
                                 <select id="severity" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
                                     <option value="" disabled selected data-i18n="opt_sel_sev">Select Level</option>
                                     <option value="Low" data-i18n="opt_sev_lo">Low (Informational)</option>
                                     <option value="Medium" data-i18n="opt_sev_me">Medium (Urgent)</option>
                                     <option value="High" data-i18n="opt_sev_hi">High (Immediate Danger)</option>
                                 </select>
+                                <p id="severity-warning" class="hidden text-xs text-red-600 font-bold mt-1"><i class="fas fa-exclamation-triangle"></i> Immediate risk detected.</p>
                             </div>
 
                             <!-- Date -->
                             <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="date">Date</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" for="date" data-i18n="date">Date</label>
                                 <input type="date" id="date" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3">
                             </div>
                         </div>
 
-                        <!-- Cascading Location -->
-                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
+                        <!-- Cascading Location + GPS -->
+                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200 relative">
+                             <!-- GPS Button -->
+                            <div class="absolute top-4 right-4">
+                                <button type="button" id="gps-btn" class="text-xs bg-white text-brand-green border border-brand-green px-3 py-1 rounded hover:bg-brand-green hover:text-white transition flex items-center">
+                                    <i class="fas fa-crosshairs mr-1"></i> Use GPS
+                                </button>
+                                <span id="gps-status" class="text-[10px] text-gray-500 block text-right mt-1"></span>
+                            </div>
+
                             <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-map-marker-alt text-brand-green mr-1"></i> <span data-i18n="location">Location Data</span></label>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <select id="stateSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green">
                                         <option value="" data-i18n="opt_sel_state">Select State</option>
-                                        <!-- Populated via JS -->
                                     </select>
                                 </div>
                                 <div>
@@ -289,28 +327,32 @@
                                     </select>
                                 </div>
                             </div>
+                            <input type="hidden" id="gps-lat">
+                            <input type="hidden" id="gps-lng">
                         </div>
 
                         <div class="input-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="description">Detailed Description</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" for="description" data-i18n="description">Detailed Description</label>
                             <textarea id="description" rows="4" data-i18n-placeholder="ph_desc" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Describe the incident..."></textarea>
                         </div>
 
+                        <!-- Enhanced Evidence Upload -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="evidence">Evidence Upload (Optional)</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="evidence">Evidence Upload</label>
                             <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:bg-gray-50 transition-colors cursor-pointer" onclick="document.getElementById('file-upload').click()">
                                 <div class="space-y-1 text-center">
                                     <i class="fas fa-cloud-upload-alt text-gray-400 text-3xl"></i>
                                     <div class="flex text-sm text-gray-600 justify-center">
                                         <span class="relative cursor-pointer bg-white rounded-md font-medium text-brand-green hover:text-brand-dark">
-                                            <span>Upload a file</span>
+                                            <span>Select Files</span>
                                         </span>
                                     </div>
-                                    <p class="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
-                                    <input id="file-upload" name="file-upload" type="file" class="sr-only">
-                                    <p id="file-name" class="text-xs text-brand-green font-semibold mt-2"></p>
+                                    <p class="text-xs text-gray-500">Images or PDF (Max 10MB)</p>
+                                    <input id="file-upload" name="file-upload" type="file" class="sr-only" multiple accept="image/*,application/pdf">
                                 </div>
                             </div>
+                            <!-- File Preview List -->
+                            <ul id="file-list" class="mt-3 space-y-2 text-sm text-gray-600"></ul>
                         </div>
                     </div>
 
@@ -332,57 +374,91 @@
                     </div>
                 </form>
             </div>
+        </div>
 
-            <!-- Receipt Section -->
-            <div id="receipt-section" class="hidden transform transition-all duration-500 ease-in-out">
-                <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12 relative overflow-hidden">
-                    <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
-                        <i class="fas fa-scale-balanced text-9xl"></i>
-                    </div>
-                    <div class="flex justify-center mb-6 no-print">
-                        <div class="checkmark-circle">
-                             <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>
+        <!-- TRACKING VIEW -->
+        <div id="track-view" class="hidden-view max-w-xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl p-8 border-t-4 border-brand-accent">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4" data-i18n="nav_track">Track Case</h2>
+                <div class="flex gap-2 mb-6">
+                    <input type="text" id="track-id-input" placeholder="Enter Case ID (e.g. NHRC-2026-1234)" class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-accent focus:outline-none uppercase">
+                    <button onclick="trackCase()" class="bg-brand-dark text-white px-6 rounded-lg font-bold">Search</button>
+                </div>
+                
+                <div id="track-result" class="hidden">
+                    <div class="border-l-4 border-gray-300 ml-3 pl-6 space-y-8 relative">
+                        <!-- Timeline -->
+                        <div class="relative">
+                            <div class="absolute -left-[35px] bg-green-500 h-5 w-5 rounded-full border-4 border-white shadow"></div>
+                            <h4 class="font-bold text-gray-800">Submitted</h4>
+                            <p class="text-xs text-gray-500">Jan 19, 2026 - 10:00 AM</p>
+                            <p class="text-sm text-gray-600 mt-1">Case received and encrypted.</p>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute -left-[35px] bg-blue-500 h-5 w-5 rounded-full border-4 border-white shadow"></div>
+                            <h4 class="font-bold text-gray-800">Under Review</h4>
+                            <p class="text-xs text-gray-500">Jan 19, 2026 - 02:30 PM</p>
+                            <p class="text-sm text-gray-600 mt-1">Assigned to Officer A. Musa (Kano Unit).</p>
+                        </div>
+                        <div class="relative opacity-50">
+                            <div class="absolute -left-[35px] bg-gray-300 h-5 w-5 rounded-full border-4 border-white shadow"></div>
+                            <h4 class="font-bold text-gray-800">Resolution</h4>
+                            <p class="text-sm text-gray-600 mt-1">Pending investigation.</p>
                         </div>
                     </div>
-                    
-                    <div class="text-center mb-8 border-b-2 border-brand-green pb-6">
-                        <h2 class="text-3xl font-bold text-brand-dark mb-1" data-i18n="receipt_title">ACKNOWLEDGEMENT RECEIPT</h2>
-                        <p class="text-gray-500 uppercase tracking-widest text-xs">Official Record of Submission</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RECEIPT VIEW -->
+        <div id="receipt-section" class="hidden transform transition-all duration-500 ease-in-out max-w-4xl mx-auto">
+            <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12 relative overflow-hidden">
+                <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                    <i class="fas fa-scale-balanced text-9xl"></i>
+                </div>
+                <div class="flex justify-center mb-6 no-print">
+                    <div class="checkmark-circle">
+                            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/><path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg>
+                    </div>
+                </div>
+                
+                <div class="text-center mb-8 border-b-2 border-brand-green pb-6">
+                    <h2 class="text-3xl font-bold text-brand-dark mb-1" data-i18n="receipt_title">ACKNOWLEDGEMENT RECEIPT</h2>
+                    <p class="text-gray-500 uppercase tracking-widest text-xs">Official Record of Submission</p>
+                </div>
+
+                <div class="space-y-6 text-sm md:text-base relative z-10">
+                    <div class="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
+                        <p class="text-green-800 font-medium" data-i18n="receipt_msg">Your complaint has been duly received.</p>
                     </div>
 
-                    <div class="space-y-6 text-sm md:text-base relative z-10">
-                        <div class="bg-green-50 p-4 rounded-lg border border-green-100 text-center">
-                            <p class="text-green-800 font-medium" data-i18n="receipt_msg">Your complaint has been duly received.</p>
+                    <div class="grid grid-cols-2 gap-4 mt-6">
+                        <div class="col-span-2 md:col-span-1">
+                            <p class="text-gray-500 text-xs uppercase">Case ID</p>
+                            <p class="text-xl font-mono font-bold text-brand-dark" id="receipt-id">NHRC-2026-XXXX</p>
                         </div>
-
-                        <div class="grid grid-cols-2 gap-4 mt-6">
-                            <div class="col-span-2 md:col-span-1">
-                                <p class="text-gray-500 text-xs uppercase">Case ID</p>
-                                <p class="text-xl font-mono font-bold text-brand-dark" id="receipt-id">NHRC-2026-XXXX</p>
-                            </div>
-                            <div class="col-span-2 md:col-span-1 text-right">
-                                <p class="text-gray-500 text-xs uppercase">Severity</p>
-                                <p class="font-bold text-brand-danger" id="receipt-severity">HIGH</p>
-                            </div>
-                        </div>
-
-                        <div class="border-t border-gray-200 pt-4 mt-4">
-                            <div class="grid grid-cols-1 gap-y-4">
-                                <div><p class="text-gray-500 text-xs uppercase">Complainant</p><p class="font-medium" id="receipt-name">Name</p></div>
-                                <div><p class="text-gray-500 text-xs uppercase">Location</p><p class="font-medium" id="receipt-location">Location</p></div>
-                                <div><p class="text-gray-500 text-xs uppercase">Ward</p><p class="font-medium" id="receipt-ward">Ward</p></div>
-                            </div>
+                        <div class="col-span-2 md:col-span-1 text-right">
+                            <p class="text-gray-500 text-xs uppercase">Severity</p>
+                            <p class="font-bold text-brand-danger" id="receipt-severity">HIGH</p>
                         </div>
                     </div>
 
-                    <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center no-print">
-                        <button onclick="window.print()" class="flex-1 bg-gray-800 text-white py-3 px-6 rounded-lg hover:bg-gray-900 transition flex items-center justify-center gap-2">
-                            <i class="fas fa-print"></i> Print
-                        </button>
-                        <button onclick="window.location.reload()" class="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2">
-                            <i class="fas fa-plus"></i> New Case
-                        </button>
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <div class="grid grid-cols-1 gap-y-4">
+                            <div><p class="text-gray-500 text-xs uppercase">Complainant</p><p class="font-medium" id="receipt-name">Name</p></div>
+                            <div><p class="text-gray-500 text-xs uppercase">Location</p><p class="font-medium" id="receipt-location">Location</p></div>
+                            <div><p class="text-gray-500 text-xs uppercase">Ward</p><p class="font-medium" id="receipt-ward">Ward</p></div>
+                        </div>
                     </div>
+                </div>
+
+                <div class="mt-8 flex flex-col md:flex-row gap-4 justify-center no-print">
+                    <button onclick="window.print()" class="flex-1 bg-gray-800 text-white py-3 px-6 rounded-lg hover:bg-gray-900 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button onclick="window.location.reload()" class="flex-1 border border-gray-300 text-gray-700 py-3 px-6 rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i> New Case
+                    </button>
                 </div>
             </div>
         </div>
@@ -390,14 +466,26 @@
         <!-- ADMIN VIEW (Initially Hidden) -->
         <div id="admin-view" class="hidden-view space-y-6">
             <!-- SOS ALERT FEED (Dynamic) -->
-            <div id="sos-feed-container" class="hidden">
-                <!-- Injected via JS -->
-            </div>
+            <div id="sos-feed-container" class="hidden"></div>
 
             <!-- Admin Header -->
-            <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow">
+            <div class="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-lg shadow gap-4">
                 <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-chart-line text-brand-green mr-2"></i><span data-i18n="admin_dash">Admin Dashboard</span></h2>
-                <div class="text-sm text-gray-500">Last updated: <span class="font-mono">Just now</span></div>
+                
+                <!-- Admin Filters -->
+                <div class="flex gap-2">
+                    <select id="admin-filter-state" onchange="updateAdminFilters()" class="text-sm border rounded p-2">
+                        <option value="all">All States</option>
+                        <option value="Kano">Kano</option>
+                        <option value="Lagos">Lagos</option>
+                        <option value="Abia">Abia</option>
+                        <option value="FCT">FCT</option>
+                    </select>
+                    <select id="admin-filter-severity" onchange="updateAdminFilters()" class="text-sm border rounded p-2">
+                        <option value="all">All Severities</option>
+                        <option value="High">High Only</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Stats Cards -->
@@ -437,7 +525,7 @@
                 </div>
             </div>
 
-            <!-- Monthly Trends Bar Chart -->
+            <!-- Monthly Trends Bar Chart (Restored) -->
              <div class="bg-white p-4 rounded-lg shadow">
                 <h3 class="font-bold text-gray-700 mb-2" data-i18n="admin_trend_chart">Monthly Reporting Trends (2025)</h3>
                 <div class="relative h-64 w-full">
@@ -476,12 +564,26 @@
                                 <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Medium</span></td>
                                 <td class="px-6 py-4">Investigating</td>
                             </tr>
-                             <tr>
+                            <tr>
                                 <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9923</td>
                                 <td class="px-6 py-4">Abia</td>
                                 <td class="px-6 py-4">Child Rights</td>
                                 <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Low</span></td>
                                 <td class="px-6 py-4">Resolved</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9924</td>
+                                <td class="px-6 py-4">FCT</td>
+                                <td class="px-6 py-4">Sexual Violence</td>
+                                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">High</span></td>
+                                <td class="px-6 py-4">Assigned</td>
+                            </tr>
+                             <tr>
+                                <td class="px-6 py-4 whitespace-nowrap font-mono">NHRC-9925</td>
+                                <td class="px-6 py-4">Rivers</td>
+                                <td class="px-6 py-4">Kidnapping</td>
+                                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">High</span></td>
+                                <td class="px-6 py-4">Escalated</td>
                             </tr>
                         </tbody>
                     </table>
@@ -498,7 +600,6 @@
         <button id="sos-btn" class="relative w-20 h-20 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-2xl font-bold transition-transform transform active:scale-95 focus:outline-none overflow-hidden ring-4 ring-red-200">
             <!-- Icon -->
             <span class="z-10 relative pointer-events-none"><i class="fas fa-tower-broadcast"></i></span>
-            
             <!-- Progress SVG -->
             <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 120 120">
                  <circle class="sos-progress-ring__circle" stroke="white" stroke-width="8" fill="transparent" r="52" cx="60" cy="60" style="stroke-dasharray: 326.726; stroke-dashoffset: 326.726;"></circle>
@@ -515,7 +616,6 @@
     <script>
         // --- 1. CONFIGURATION & DATA ---
 
-        // Translations Dictionary
         const i18n = {
             en: {
                 portal_title: "National Rights<br>Reporting Portal",
@@ -541,6 +641,7 @@
                 receipt_title: "ACKNOWLEDGEMENT RECEIPT",
                 receipt_msg: "Your complaint has been duly received and queued for immediate attention.",
                 sos_label: "Hold 20s for SOS",
+                nav_track: "Track Case",
                 
                 // Placeholders & Options
                 ph_fullname: "Firstname Lastname",
@@ -552,7 +653,7 @@
                 opt_cat_pb: "Police Brutality",
                 opt_cat_sv: "Sexual Violence",
                 opt_cat_kd: "Kidnapping",
-                opt_cat_ot: "Other",
+                opt_cat_ot: "Other (Specify)",
                 opt_sel_sev: "Select Level",
                 opt_sev_lo: "Low (Informational)",
                 opt_sev_me: "Medium (Urgent)",
@@ -600,6 +701,7 @@
                 receipt_title: "RISITIN KARBA",
                 receipt_msg: "An karbi korafin ku kuma yana cikin layi don duba na gaggawa.",
                 sos_label: "Riƙe na daƙiƙa 20 don SOS",
+                nav_track: "Bibiyi Kara",
 
                 // Placeholders & Options
                 ph_fullname: "Sunan Farko, Sunan Baya",
@@ -619,8 +721,8 @@
                 opt_sel_state: "Zabi Jiha",
                 opt_sel_lga: "Zabi Karamar Hukuma",
                 opt_sel_ward: "Zabi Unguwa",
-
-                // Admin
+                
+                 // Admin
                 admin_dash: "Allon Gudanarwa",
                 admin_total: "Jimlar Rahoto",
                 admin_critical: "Mai Tsanani",
@@ -659,6 +761,7 @@
                 receipt_title: "IWE ẸRI GBIGBA",
                 receipt_msg: "A ti gba ẹsun rẹ daradara ati pe a ti tò si laini fun akiyesi lẹsẹkẹsẹ.",
                 sos_label: "Di fun 20s fun SOS",
+                nav_track: "Tọpinpin Ẹjọ",
 
                 // Placeholders & Options
                 ph_fullname: "Orukọ Akọkọ, Orukọ Idile",
@@ -718,6 +821,7 @@
                 receipt_title: "RISITI NATA",
                 receipt_msg: "Anatawo mkpesa gị nke ọma ma tinye ya n'ahịrị maka nlebara anya ngwa ngwa.",
                 sos_label: "Jide maka 20s maka SOS",
+                nav_track: "Soro Ikpe",
 
                 // Placeholders & Options
                 ph_fullname: "Aha Mbụ, Aha Ikpeazụ",
@@ -755,74 +859,96 @@
             }
         };
 
-        // Fallback Location Data (Subset)
         const fallbackLocations = [
-            {
-                "state": "Kano",
-                "lgas": [
-                    { "lga": "Kano Municipal", "wards": ["Shahuchi", "Zaitawa", "Tudun Waziri", "Gandun Albasa"] },
-                    { "lga": "Nassarawa", "wards": ["Gwagwarwa", "Tudun Murtala", "Dakata", "Giginyu"] },
-                    { "lga": "Dala", "wards": ["Gwammaja", "Adakawa", "Bakin Ruwa", "Gobirawa"] }
-                ]
-            },
-            {
-                "state": "Lagos",
-                "lgas": [
-                    { "lga": "Ikeja", "wards": ["Alausa", "Agidingbi", "Oregun", "Ikeja GRA"] },
-                    { "lga": "Eti-Osa", "wards": ["Victoria Island", "Ikoyi", "Lekki", "Ajah"] },
-                    { "lga": "Alimosho", "wards": ["Egbeda", "Ikotun", "Igando", "Ipaja"] }
-                ]
-            },
-            {
-                "state": "Abia",
-                "lgas": [
-                    { "lga": "Aba North", "wards": ["Ariaria", "Ogbor Hill", "Eziama"] },
-                    { "lga": "Umuahia North", "wards": ["Ibeku East", "Ndume", "Urban 1"] }
-                ]
-            }
+            { "state": "Kano", "lgas": [{ "lga": "Kano Municipal", "wards": ["Shahuchi", "Zaitawa"] }] },
+            { "state": "Lagos", "lgas": [{ "lga": "Ikeja", "wards": ["Alausa", "Agidingbi"] }] },
+            { "state": "Abia", "lgas": [{ "lga": "Aba North", "wards": ["Ariaria", "Ogbor Hill"] }] }
         ];
 
         let locationData = fallbackLocations; 
         let sosActive = false;
-        let sosTimer = null;
-        let sosStartTime = 0;
-        let mapInstance = null; // Global reference
+        let mapInstance = null;
+        let adminMarkers = []; // Store markers for filtering
 
         // --- 2. INITIALIZATION ---
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Attempt to fetch full JSON
+            // Set max date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').setAttribute('max', today);
+
+            // Offline Check
+            window.addEventListener('offline', toggleOfflineStatus);
+            window.addEventListener('online', toggleOfflineStatus);
+            toggleOfflineStatus();
+
             try {
                 const response = await fetch('https://raw.githubusercontent.com/afeibukun/nigerian-state-lgas-wards-polling-units/refs/heads/main/states-and-lgas-and-wards.json');
-                if (response.ok) {
-                    locationData = await response.json();
-                    console.log("Full location data loaded");
-                }
-            } catch (error) {
-                console.warn("Could not load external location data, using fallback.", error);
-            }
+                if (response.ok) locationData = await response.json();
+            } catch (error) { console.warn("Using fallback locations"); }
 
             initLocationSelectors();
             initAnonymityToggle();
             initSOSButton();
+            initEvidenceUpload();
+            initDynamicFields();
         });
 
         // --- 3. HELPER FUNCTIONS ---
 
+        function toggleOfflineStatus() {
+            const banner = document.getElementById('offline-banner');
+            if (!navigator.onLine) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
         function changeLanguage(lang) {
-            // Update Text Content
-            document.querySelectorAll('[data-i18n]').forEach(element => {
-                const key = element.getAttribute('data-i18n');
-                if (i18n[lang] && i18n[lang][key]) {
-                    element.innerHTML = i18n[lang][key]; 
-                }
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang]?.[key]) el.innerHTML = i18n[lang][key]; 
             });
-            
-            // Update Placeholders
-            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-                const key = element.getAttribute('data-i18n-placeholder');
-                if (i18n[lang] && i18n[lang][key]) {
-                    element.placeholder = i18n[lang][key]; 
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (i18n[lang]?.[key]) el.placeholder = i18n[lang][key]; 
+            });
+        }
+
+        function initDynamicFields() {
+            // "Other" Category Toggle
+            const catSelect = document.getElementById('category');
+            const otherInput = document.getElementById('other-category-input');
+            catSelect.addEventListener('change', (e) => {
+                if(e.target.value === "Other") otherInput.classList.remove('hidden');
+                else otherInput.classList.add('hidden');
+            });
+
+            // Severity Warning
+            const sevSelect = document.getElementById('severity');
+            const warning = document.getElementById('severity-warning');
+            sevSelect.addEventListener('change', (e) => {
+                if(e.target.value === "High") warning.classList.remove('hidden');
+                else warning.classList.add('hidden');
+            });
+
+            // GPS Button
+            document.getElementById('gps-btn').addEventListener('click', () => {
+                const status = document.getElementById('gps-status');
+                status.textContent = "Locating...";
+                if(navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (pos) => {
+                            const acc = Math.round(pos.coords.accuracy);
+                            status.textContent = `Acquired (Accuracy: ${acc}m)`;
+                            document.getElementById('gps-lat').value = pos.coords.latitude;
+                            document.getElementById('gps-lng').value = pos.coords.longitude;
+                            status.className = "text-[10px] text-green-600 block text-right mt-1 font-bold";
+                        },
+                        (err) => { status.textContent = "Failed. Enable GPS."; status.className = "text-[10px] text-red-500 block text-right mt-1"; },
+                        { enableHighAccuracy: true }
+                    );
                 }
             });
         }
@@ -831,35 +957,214 @@
             const toggle = document.getElementById('anonymousToggle');
             const personal = document.getElementById('personal-details');
             const inputs = personal.querySelectorAll('input');
-            const label = document.getElementById('toggleLabel');
-
+            
             toggle.addEventListener('change', function() {
                 if (this.checked) {
                     personal.style.opacity = '0.5';
                     personal.style.pointerEvents = 'none';
-                    label.textContent = "Anonymous";
-                    inputs.forEach(i => {
-                        i.value = '';
-                        i.removeAttribute('required');
-                    });
-                    // Clear errors
-                    document.getElementById('name-error').classList.add('hidden');
-                    document.getElementById('phone-error').classList.add('hidden');
+                    document.getElementById('toggleLabel').textContent = "Anonymous";
+                    inputs.forEach(i => { i.value = ''; i.removeAttribute('aria-required'); });
                 } else {
                     personal.style.opacity = '1';
                     personal.style.pointerEvents = 'auto';
-                    label.textContent = "Standard";
-                    inputs.forEach(i => i.setAttribute('required', 'true'));
+                    document.getElementById('toggleLabel').textContent = "Standard";
+                    inputs.forEach(i => i.setAttribute('aria-required', 'true'));
                 }
             });
         }
+
+        function initEvidenceUpload() {
+            const input = document.getElementById('file-upload');
+            const list = document.getElementById('file-list');
+            
+            input.addEventListener('change', function() {
+                list.innerHTML = '';
+                Array.from(this.files).forEach(file => {
+                    // Validation
+                    if (file.size > 10 * 1024 * 1024) {
+                        alert(`File ${file.name} is too large (>10MB).`);
+                        return;
+                    }
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center bg-gray-50 p-2 rounded";
+                    li.innerHTML = `<span>${file.name} <span class="text-xs text-gray-400">(${(file.size/1024/1024).toFixed(2)}MB)</span></span> <i class="fas fa-check text-green-500"></i>`;
+                    list.appendChild(li);
+                });
+            });
+        }
+
+        // --- 4. NAVIGATION & VIEWS ---
+
+        function switchView(viewName) {
+            document.querySelectorAll('[id$="-view"], [id="receipt-section"]').forEach(el => el.classList.add('hidden-view'));
+            document.getElementById('receipt-section').classList.add('hidden'); // Ensure receipt specifically hidden
+            
+            if (viewName === 'user') {
+                document.getElementById('user-view').classList.remove('hidden-view');
+                document.getElementById('form-section').classList.remove('hidden'); // Show form if it was hidden
+            } else if (viewName === 'admin') {
+                document.getElementById('admin-view').classList.remove('hidden-view');
+                if (!mapInstance) initAdminDashboard();
+            } else if (viewName === 'track') {
+                document.getElementById('track-view').classList.remove('hidden-view');
+            }
+        }
+
+        function toggleAdmin() {
+            const adminView = document.getElementById('admin-view');
+            if (adminView.classList.contains('hidden-view')) switchView('admin');
+            else switchView('user');
+        }
+
+        function trackCase() {
+            const id = document.getElementById('track-id-input').value;
+            if(id.length > 5) {
+                document.getElementById('track-result').classList.remove('hidden');
+            } else {
+                alert("Please enter a valid Case ID.");
+            }
+        }
+
+        // --- 5. FORM SUBMISSION ---
+
+        document.getElementById('complaintForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validation
+            const errors = [];
+            const isAnonymous = document.getElementById('anonymousToggle').checked;
+            
+            if (!isAnonymous) {
+                const name = document.getElementById('fullName').value.trim();
+                if (!/^[a-zA-Z]+ [a-zA-Z]+/.test(name)) errors.push("Full Name requires First and Last name.");
+                const phone = document.getElementById('phone').value.trim();
+                if (!/^\d{11}$/.test(phone)) errors.push("Phone must be 11 digits.");
+            }
+
+            if (!document.getElementById('stateSelect').value) errors.push("State selection is required.");
+            
+            // Show Errors
+            const errorBox = document.getElementById('error-box');
+            if (errors.length > 0) {
+                document.getElementById('error-list').innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+                errorBox.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            errorBox.classList.add('hidden');
+
+            // Success Transition
+            const btn = this.querySelector('button[type="submit"]');
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                document.getElementById('form-section').classList.add('hidden');
+                document.getElementById('receipt-section').classList.remove('hidden');
+                document.getElementById('receipt-section').classList.remove('hidden-view');
+                
+                // Populate Receipt
+                document.getElementById('receipt-id').textContent = `NHRC-2026-${Math.floor(Math.random() * 9000) + 1000}`;
+                const sev = document.getElementById('severity').value;
+                document.getElementById('receipt-severity').textContent = sev.toUpperCase();
+                document.getElementById('receipt-severity').className = sev === 'High' ? 'font-bold text-red-600' : 'font-bold text-green-600';
+                document.getElementById('receipt-name').textContent = isAnonymous ? "Anonymous" : document.getElementById('fullName').value;
+                document.getElementById('receipt-location').textContent = document.getElementById('stateSelect').value.toUpperCase();
+                document.getElementById('receipt-ward').textContent = document.getElementById('wardSelect').value;
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }, 1500);
+        });
+
+        // --- 6. ADMIN DASHBOARD ---
+
+        // Expanded Mock Data
+        const mockReports = [
+            { lat: 11.9961, lng: 8.5167, type: 'High', loc: 'Kano', state: 'Kano' },
+            { lat: 6.5244, lng: 3.3792, type: 'Medium', loc: 'Lagos', state: 'Lagos' },
+            { lat: 9.0765, lng: 7.3986, type: 'Low', loc: 'Abuja', state: 'FCT' },
+            { lat: 7.3775, lng: 3.9470, type: 'High', loc: 'Ibadan', state: 'Oyo' },
+            { lat: 4.8156, lng: 7.0498, type: 'High', loc: 'Port Harcourt', state: 'Rivers' },
+            { lat: 13.0059, lng: 5.2476, type: 'Medium', loc: 'Sokoto', state: 'Sokoto' },
+            { lat: 11.8311, lng: 13.1510, type: 'High', loc: 'Maiduguri', state: 'Borno' },
+            { lat: 6.4584, lng: 7.5464, type: 'Low', loc: 'Enugu', state: 'Enugu' },
+            { lat: 6.3350, lng: 5.6037, type: 'Medium', loc: 'Benin City', state: 'Edo' },
+            { lat: 9.8965, lng: 8.8583, type: 'Low', loc: 'Jos', state: 'Plateau' },
+            { lat: 10.5105, lng: 7.4165, type: 'Medium', loc: 'Kaduna', state: 'Kaduna' },
+            { lat: 4.9757, lng: 8.3417, type: 'High', loc: 'Calabar', state: 'Cross River' },
+            { lat: 8.4799, lng: 4.5418, type: 'Low', loc: 'Ilorin', state: 'Kwara' }
+        ];
+
+        function initAdminDashboard() {
+            mapInstance = L.map('map').setView([9.0820, 8.6753], 6); 
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapInstance);
+            renderMapMarkers(); 
+            initCharts();
+        }
+
+        function initCharts() {
+             // Category Pie Chart
+             const ctx1 = document.getElementById('categoryChart').getContext('2d');
+             new Chart(ctx1, {
+                 type: 'doughnut',
+                 data: {
+                     labels: ['Domestic Violence', 'Police Brutality', 'Child Rights', 'Economic', 'Other'],
+                     datasets: [{
+                         data: [45, 25, 15, 10, 5],
+                         backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6b7280']
+                     }]
+                 },
+                 options: { maintainAspectRatio: false }
+             });
+ 
+             // Trend Bar Chart
+             const ctx2 = document.getElementById('trendChart').getContext('2d');
+             new Chart(ctx2, {
+                 type: 'bar',
+                 data: {
+                     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                     datasets: [{
+                         label: 'Reports Filed',
+                         data: [120, 190, 300, 250, 400, 450],
+                         backgroundColor: '#006644'
+                     }]
+                 },
+                 options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+             });
+        }
+
+        function renderMapMarkers(filterState = 'all', filterSev = 'all') {
+            // Clear existing
+            adminMarkers.forEach(m => mapInstance.removeLayer(m));
+            adminMarkers = [];
+
+            mockReports.forEach(r => {
+                if (filterState !== 'all' && r.state !== filterState) return;
+                if (filterSev !== 'all' && r.type !== filterSev) return;
+
+                const className = r.type === 'High' ? 'blinking-marker' : (r.type === 'Medium' ? 'urgent-marker' : '');
+                const icon = L.divIcon({ className: className || 'bg-green-500 rounded-full w-4 h-4 border-2 border-white', iconSize: [20, 20] });
+
+                const m = L.marker([r.lat, r.lng], { icon: icon })
+                    .addTo(mapInstance)
+                    .bindPopup(`<b>${r.loc}</b><br>Severity: ${r.type}`);
+                adminMarkers.push(m);
+            });
+        }
+
+        function updateAdminFilters() {
+            const s = document.getElementById('admin-filter-state').value;
+            const sev = document.getElementById('admin-filter-severity').value;
+            renderMapMarkers(s, sev);
+        }
+
+        // --- 7. LOCATION & SOS ---
 
         function initLocationSelectors() {
             const stateSel = document.getElementById('stateSelect');
             const lgaSel = document.getElementById('lgaSelect');
             const wardSel = document.getElementById('wardSelect');
 
-            // Populate States
             locationData.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.state.name || s.state; 
@@ -867,179 +1172,62 @@
                 stateSel.appendChild(opt);
             });
 
-            // State Change
             stateSel.addEventListener('change', function() {
-                const lang = document.getElementById('langSelect').value;
-                const lgaText = i18n[lang]['opt_sel_lga'];
-                const wardText = i18n[lang]['opt_sel_ward'];
-
-                lgaSel.innerHTML = `<option value="" data-i18n="opt_sel_lga">${lgaText}</option>`;
-                wardSel.innerHTML = `<option value="" data-i18n="opt_sel_ward">${wardText}</option>`;
+                lgaSel.innerHTML = '<option value="">Select LGA</option>';
+                wardSel.innerHTML = '<option value="">Select Ward</option>';
                 wardSel.disabled = true;
-
                 if (this.value) {
                     lgaSel.disabled = false;
                     const stateObj = locationData.find(s => (s.state.name || s.state) == this.value);
-                    if (stateObj) {
-                        stateObj.lgas.forEach(l => {
-                            const opt = document.createElement('option');
-                            opt.value = l.lga.name || l.lga;
-                            opt.textContent = (l.lga.name || l.lga).toUpperCase();
-                            lgaSel.appendChild(opt);
-                        });
-                    }
-                } else {
-                    lgaSel.disabled = true;
-                }
+                    if (stateObj) stateObj.lgas.forEach(l => {
+                        const opt = document.createElement('option');
+                        opt.value = l.lga.name || l.lga;
+                        opt.textContent = (l.lga.name || l.lga).toUpperCase();
+                        lgaSel.appendChild(opt);
+                    });
+                } else { lgaSel.disabled = true; }
             });
 
-            // LGA Change
             lgaSel.addEventListener('change', function() {
-                const lang = document.getElementById('langSelect').value;
-                const wardText = i18n[lang]['opt_sel_ward'];
-                wardSel.innerHTML = `<option value="" data-i18n="opt_sel_ward">${wardText}</option>`;
-                
+                wardSel.innerHTML = '<option value="">Select Ward</option>';
                 if (this.value) {
                     wardSel.disabled = false;
                     const stateObj = locationData.find(s => (s.state.name || s.state) == stateSel.value);
                     const lgaObj = stateObj.lgas.find(l => (l.lga.name || l.lga) == this.value);
-                    if (lgaObj && lgaObj.wards) {
-                        lgaObj.wards.forEach(w => {
-                            const opt = document.createElement('option');
-                            const wName = typeof w === 'string' ? w : w.name;
-                            opt.value = wName;
-                            opt.textContent = wName;
-                            wardSel.appendChild(opt);
-                        });
-                    }
-                } else {
-                    wardSel.disabled = true;
-                }
+                    if (lgaObj && lgaObj.wards) lgaObj.wards.forEach(w => {
+                        const opt = document.createElement('option');
+                        opt.value = typeof w === 'string' ? w : w.name;
+                        opt.textContent = opt.value;
+                        wardSel.appendChild(opt);
+                    });
+                } else { wardSel.disabled = true; }
             });
         }
-
-        // --- 4. FORM VALIDATION & SUBMISSION ---
-
-        document.getElementById('complaintForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Validation
-            let isValid = true;
-            const isAnonymous = document.getElementById('anonymousToggle').checked;
-            const errorBox = document.getElementById('error-box');
-            
-            // Name Validation (First & Last)
-            if (!isAnonymous) {
-                const name = document.getElementById('fullName').value.trim();
-                const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+(\s[a-zA-Z]+)*$/; 
-                if (!nameRegex.test(name)) {
-                    document.getElementById('name-error').classList.remove('hidden');
-                    isValid = false;
-                } else {
-                    document.getElementById('name-error').classList.add('hidden');
-                }
-
-                // Phone Validation
-                const phone = document.getElementById('phone').value.trim();
-                const phoneRegex = /^\d{11}$/;
-                if (!phoneRegex.test(phone)) {
-                    document.getElementById('phone-error').classList.remove('hidden');
-                    isValid = false;
-                } else {
-                    document.getElementById('phone-error').classList.add('hidden');
-                }
-            }
-
-            // Location Validation
-            if (!document.getElementById('stateSelect').value || 
-                !document.getElementById('lgaSelect').value || 
-                !document.getElementById('wardSelect').value) {
-                isValid = false;
-            }
-
-            if (!isValid) {
-                errorBox.classList.remove('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
-
-            errorBox.classList.add('hidden');
-
-            // --- Success ---
-            const btn = this.querySelector('button[type="submit"]');
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
-            btn.disabled = true;
-
-            const severity = document.getElementById('severity').value;
-            const state = document.getElementById('stateSelect').value;
-            const ward = document.getElementById('wardSelect').value;
-            const name = isAnonymous ? "Anonymous" : document.getElementById('fullName').value;
-
-            setTimeout(() => {
-                document.getElementById('form-section').classList.add('hidden');
-                document.getElementById('receipt-section').classList.remove('hidden');
-
-                document.getElementById('receipt-id').textContent = `NHRC-2026-${Math.floor(Math.random() * 9000) + 1000}`;
-                document.getElementById('receipt-severity').textContent = severity.toUpperCase();
-                document.getElementById('receipt-severity').className = severity === 'High' ? 'font-bold text-red-600' : (severity === 'Medium' ? 'font-bold text-yellow-600' : 'font-bold text-green-600');
-                document.getElementById('receipt-name').textContent = name;
-                document.getElementById('receipt-location').textContent = state.toUpperCase();
-                document.getElementById('receipt-ward').textContent = ward;
-
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }, 1500);
-        });
-
-        // --- 5. SOS BUTTON LOGIC (20 Seconds) ---
 
         function initSOSButton() {
             const btn = document.getElementById('sos-btn');
             const ring = btn.querySelector('.sos-progress-ring__circle');
-            const radius = ring.r.baseVal.value;
-            const circumference = radius * 2 * Math.PI;
-            
+            const circumference = ring.r.baseVal.value * 2 * Math.PI;
             ring.style.strokeDasharray = `${circumference} ${circumference}`;
             ring.style.strokeDashoffset = circumference;
-
-            const duration = 20000; // 20 seconds
-            let startTime = null;
-            let requestID = null;
-
-            function setProgress(percent) {
-                const offset = circumference - percent / 100 * circumference;
-                ring.style.strokeDashoffset = offset;
-            }
+            let requestID = null, startTime = null;
 
             function startTimer() {
-                if (sosActive) return; // Already triggered
+                if (sosActive) return;
                 startTime = Date.now();
-                
                 function animate() {
-                    const elapsed = Date.now() - startTime;
-                    const progress = Math.min((elapsed / duration) * 100, 100);
-                    
-                    setProgress(progress);
-
-                    if (progress < 100) {
-                        requestID = requestAnimationFrame(animate);
-                    } else {
-                        triggerSOS();
-                    }
+                    const progress = Math.min(((Date.now() - startTime) / 20000) * 100, 100);
+                    ring.style.strokeDashoffset = circumference - progress / 100 * circumference;
+                    if (progress < 100) requestID = requestAnimationFrame(animate);
+                    else triggerSOS();
                 }
                 requestID = requestAnimationFrame(animate);
             }
+            function resetTimer() { if (!sosActive) { cancelAnimationFrame(requestID); ring.style.strokeDashoffset = circumference; } }
 
-            function resetTimer() {
-                if (sosActive) return; // Keep it triggered if already done
-                cancelAnimationFrame(requestID);
-                setProgress(0);
-            }
-
-            // Events for Mouse and Touch
             btn.addEventListener('mousedown', startTimer);
             btn.addEventListener('mouseup', resetTimer);
             btn.addEventListener('mouseleave', resetTimer);
-            
             btn.addEventListener('touchstart', (e) => { e.preventDefault(); startTimer(); });
             btn.addEventListener('touchend', resetTimer);
         }
@@ -1047,153 +1235,36 @@
         function triggerSOS() {
             sosActive = true;
             document.getElementById('sos-message').classList.remove('hidden');
-            
-            // Haptic Feedback
             if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+            
+            // Simple default if geo fails
+            sendSOSDashboard(9.0820, 8.6753, true); 
 
-            // Default fallback location (Abuja)
-            const fallbackLat = 9.0820;
-            const fallbackLng = 8.6753;
-
-            // Geolocation
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        sendSOSDashboard(latitude, longitude);
-                    },
-                    (error) => {
-                        console.warn("SOS Location access denied or failed. Using fallback.", error.message);
-                        // Send without precise location (or default)
-                        sendSOSDashboard(fallbackLat, fallbackLng, true); 
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    (pos) => sendSOSDashboard(pos.coords.latitude, pos.coords.longitude),
+                    (err) => console.log("SOS Geo fail")
                 );
-            } else {
-                console.warn("Geolocation not supported. Using fallback.");
-                sendSOSDashboard(fallbackLat, fallbackLng, true);
             }
         }
 
-        function sendSOSDashboard(lat, lng, isApprox = false) {
-            // Update Dashboard UI Mock
+        function sendSOSDashboard(lat, lng, approx=false) {
             const feed = document.getElementById('sos-feed-container');
             feed.classList.remove('hidden');
-            
-            const alertHTML = `
+            feed.innerHTML = `
                 <div class="bg-red-600 text-white p-4 rounded-lg shadow-lg mb-6 flex justify-between items-center animate-pulse">
                     <div>
-                        <h3 class="font-bold text-lg"><i class="fas fa-tower-broadcast mr-2"></i> EMERGENCY SOS SIGNAL RECEIVED</h3>
-                        <p class="text-sm">Location: ${lat.toFixed(4)}, ${lng.toFixed(4)} ${isApprox ? '(Approx)' : '(Precise)'}</p>
-                        <p class="text-xs mt-1">Status: DISPATCHING UNITS</p>
+                        <h3 class="font-bold text-lg"><i class="fas fa-tower-broadcast mr-2"></i> SOS SIGNAL RECEIVED</h3>
+                        <p class="text-sm">Loc: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
                     </div>
                     <div class="text-3xl font-mono font-bold">LIVE</div>
-                </div>
-            `;
-            feed.innerHTML = alertHTML + feed.innerHTML;
-
-            // Update Map if active
-            if (mapInstance) {
-                const sosIcon = L.divIcon({ className: 'sos-marker', iconSize: [30, 30] });
-                L.marker([lat, lng], { icon: sosIcon }).addTo(mapInstance)
-                 .bindPopup("<b>EMERGENCY SOS</b><br>User Location Logged").openPopup();
+                </div>` + feed.innerHTML;
+            
+            if(mapInstance) {
+                const icon = L.divIcon({ className: 'sos-marker', iconSize: [30, 30] });
+                L.marker([lat, lng], { icon: icon }).addTo(mapInstance).bindPopup("EMERGENCY SOS").openPopup();
                 mapInstance.setView([lat, lng], 14);
             }
-        }
-
-        // --- 6. ADMIN DASHBOARD & MAP ---
-
-        let mapInitialized = false;
-
-        function switchView(viewName) {
-            if (viewName === 'user') {
-                document.getElementById('user-view').classList.remove('hidden-view');
-                document.getElementById('admin-view').classList.add('hidden-view');
-            } else if (viewName === 'admin') {
-                document.getElementById('user-view').classList.add('hidden-view');
-                document.getElementById('admin-view').classList.remove('hidden-view');
-                if (!mapInitialized) initAdminDashboard();
-            }
-        }
-
-        function toggleAdmin() {
-            const adminView = document.getElementById('admin-view');
-            if (adminView.classList.contains('hidden-view')) {
-                switchView('admin');
-            } else {
-                switchView('user');
-            }
-        }
-
-        function initAdminDashboard() {
-            mapInitialized = true;
-
-            // 1. Initialize Map
-            mapInstance = L.map('map').setView([9.0820, 8.6753], 6); 
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(mapInstance);
-
-            // Mock Data
-            const reports = [
-                { lat: 11.9961, lng: 8.5167, type: 'High', loc: 'Kano' },
-                { lat: 6.5244, lng: 3.3792, type: 'Medium', loc: 'Lagos' },
-                { lat: 9.0765, lng: 7.3986, type: 'Low', loc: 'Abuja' },
-                { lat: 7.3775, lng: 3.9470, type: 'High', loc: 'Ibadan' },
-                { lat: 4.8156, lng: 7.0498, type: 'High', loc: 'Port Harcourt' },
-                { lat: 13.0059, lng: 5.2476, type: 'Medium', loc: 'Sokoto' },
-                { lat: 11.8311, lng: 13.1510, type: 'High', loc: 'Maiduguri' },
-                { lat: 6.4584, lng: 7.5464, type: 'Low', loc: 'Enugu' },
-                { lat: 6.3350, lng: 5.6037, type: 'Medium', loc: 'Benin City' },
-                { lat: 9.8965, lng: 8.8583, type: 'Low', loc: 'Jos' },
-                { lat: 10.5105, lng: 7.4165, type: 'Medium', loc: 'Kaduna' },
-                { lat: 4.9757, lng: 8.3417, type: 'High', loc: 'Calabar' },
-                { lat: 8.4799, lng: 4.5418, type: 'Low', loc: 'Ilorin' }
-            ];
-
-            reports.forEach(r => {
-                const className = r.type === 'High' ? 'blinking-marker' : (r.type === 'Medium' ? 'urgent-marker' : '');
-                const color = r.type === 'High' ? 'red' : (r.type === 'Medium' ? 'orange' : 'green');
-                
-                const icon = L.divIcon({ className: className, iconSize: [20, 20] });
-
-                if (className) {
-                    L.marker([r.lat, r.lng], { icon: icon }).addTo(mapInstance)
-                    .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity<br>Incident Reported`);
-                } else {
-                    L.circleMarker([r.lat, r.lng], { color: color, radius: 8 }).addTo(mapInstance)
-                     .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity`);
-                }
-            });
-
-            // 2. Initialize Charts
-            const ctx1 = document.getElementById('categoryChart').getContext('2d');
-            new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Domestic Violence', 'Police Brutality', 'Child Rights', 'Economic', 'Other'],
-                    datasets: [{
-                        data: [45, 25, 15, 10, 5],
-                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#6b7280']
-                    }]
-                },
-                options: { maintainAspectRatio: false }
-            });
-
-            const ctx2 = document.getElementById('trendChart').getContext('2d');
-            new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'Reports Filed',
-                        data: [120, 190, 300, 250, 400, 450],
-                        backgroundColor: '#006644'
-                    }]
-                },
-                options: { maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-            });
         }
     </script>
 </body>
