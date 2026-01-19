@@ -39,6 +39,7 @@
                     },
                     animation: {
                         'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
                     }
                 }
             }
@@ -77,6 +78,15 @@
             background-color: rgba(245, 158, 11, 0.7);
             animation: pulse-yellow 2s infinite;
         }
+        .sos-marker {
+            background-color: #ff0000;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.9);
+            animation: ping-red 1s infinite;
+        }
 
         @keyframes pulse-red {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
@@ -87,6 +97,16 @@
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
             70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
             100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        @keyframes ping-red {
+            75%, 100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* SOS Button SVG Styles */
+        .sos-progress-ring__circle {
+            transition: stroke-dashoffset 0.1s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
         }
 
         /* Print Styles */
@@ -104,7 +124,7 @@
         .hidden-view { display: none !important; }
     </style>
 </head>
-<body class="min-h-screen text-gray-800 antialiased flex flex-col">
+<body class="min-h-screen text-gray-800 antialiased flex flex-col relative">
 
     <!-- Navbar -->
     <nav class="bg-brand-green text-white shadow-lg sticky top-0 z-50">
@@ -145,7 +165,7 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 py-6 max-w-7xl relative">
+    <main class="flex-grow container mx-auto px-4 py-6 max-w-7xl relative pb-24">
         
         <!-- USER VIEW -->
         <div id="user-view" class="max-w-4xl mx-auto transition-opacity duration-300">
@@ -275,83 +295,6 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="description">Detailed Description</label>
                             <textarea id="description" rows="4" data-i18n-placeholder="ph_desc" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Describe the incident..."></textarea>
                         </div>
-                                <p class="text-xs text-red-500 hidden mt-1" id="name-error">Please enter both First and Last name.</p>
-                            </div>
-                            <div class="input-group">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="phone">Phone Number</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fas fa-phone"></i></span>
-                                    <input type="tel" id="phone" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')" class="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="08012345678">
-                                </div>
-                                <p class="text-xs text-red-500 hidden mt-1" id="phone-error">Please enter a valid 11-digit Nigerian number.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Incident Details -->
-                    <div class="space-y-6">
-                        <h3 class="text-lg font-semibold text-brand-dark border-l-4 border-brand-accent pl-3" data-i18n="incident_details">Incident Details</h3>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <!-- Category -->
-                            <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="category">Category</label>
-                                <select id="category" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
-                                    <option value="" disabled selected>Select Category</option>
-                                    <option value="Domestic Violence">Domestic Violence</option>
-                                    <option value="Child Rights">Child Rights</option>
-                                    <option value="Police Brutality">Police Brutality</option>
-                                    <option value="Sexual Violence">Sexual Violence</option>
-                                    <option value="Kidnapping">Kidnapping</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-
-                            <!-- Severity -->
-                            <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="severity">Severity Level</label>
-                                <select id="severity" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3 bg-white">
-                                    <option value="" disabled selected>Select Level</option>
-                                    <option value="Low">Low (Informational)</option>
-                                    <option value="Medium">Medium (Urgent)</option>
-                                    <option value="High">High (Immediate Danger)</option>
-                                </select>
-                            </div>
-
-                            <!-- Date -->
-                            <div class="input-group md:col-span-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="date">Date</label>
-                                <input type="date" id="date" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3">
-                            </div>
-                        </div>
-
-                        <!-- Cascading Location -->
-                        <div class="bg-gray-50 p-4 rounded-md border border-gray-200">
-                            <label class="block text-sm font-medium text-gray-700 mb-3"><i class="fas fa-map-marker-alt text-brand-green mr-1"></i> <span data-i18n="location">Location Data</span></label>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <select id="stateSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green">
-                                        <option value="">Select State</option>
-                                        <!-- Populated via JS -->
-                                    </select>
-                                </div>
-                                <div>
-                                    <select id="lgaSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
-                                        <option value="">Select LGA</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <select id="wardSelect" class="w-full p-2 border border-gray-300 rounded focus:ring-brand-green focus:border-brand-green" disabled>
-                                        <option value="">Select Ward</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="description">Detailed Description</label>
-                            <textarea id="description" rows="4" required class="block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-green focus:ring focus:ring-brand-green focus:ring-opacity-20 border p-3" placeholder="Describe the incident..."></textarea>
-                        </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="evidence">Evidence Upload (Optional)</label>
@@ -446,6 +389,11 @@
 
         <!-- ADMIN VIEW (Initially Hidden) -->
         <div id="admin-view" class="hidden-view space-y-6">
+            <!-- SOS ALERT FEED (Dynamic) -->
+            <div id="sos-feed-container" class="hidden">
+                <!-- Injected via JS -->
+            </div>
+
             <!-- Admin Header -->
             <div class="flex justify-between items-center bg-white p-4 rounded-lg shadow">
                 <h2 class="text-2xl font-bold text-gray-800"><i class="fas fa-chart-line text-brand-green mr-2"></i><span data-i18n="admin_dash">Admin Dashboard</span></h2>
@@ -540,8 +488,24 @@
                 </div>
             </div>
         </div>
-
     </main>
+
+    <!-- FLOATING SOS BUTTON -->
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-2 no-print">
+        <div id="sos-message" class="hidden text-xs font-bold text-white bg-red-600 px-3 py-1 rounded shadow animate-pulse">
+            SOS ACTIVATED
+        </div>
+        <button id="sos-btn" class="relative w-20 h-20 bg-red-600 rounded-full shadow-2xl flex items-center justify-center text-white text-2xl font-bold transition-transform transform active:scale-95 focus:outline-none overflow-hidden ring-4 ring-red-200">
+            <!-- Icon -->
+            <span class="z-10 relative pointer-events-none"><i class="fas fa-tower-broadcast"></i></span>
+            
+            <!-- Progress SVG -->
+            <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 120 120">
+                 <circle class="sos-progress-ring__circle" stroke="white" stroke-width="8" fill="transparent" r="52" cx="60" cy="60" style="stroke-dasharray: 326.726; stroke-dashoffset: 326.726;"></circle>
+            </svg>
+        </button>
+        <span class="text-[10px] font-bold text-red-800 bg-white/90 px-2 py-1 rounded shadow backdrop-blur-sm border border-red-100" data-i18n="sos_label">Hold 20s for SOS</span>
+    </div>
 
     <footer class="bg-gray-800 text-gray-400 py-6 text-center text-sm no-print mt-auto">
         <p>&copy; 2026 Citizen Reporting Initiative. Powered by Civil Liberty Data Systems.</p>
@@ -576,6 +540,7 @@
                 submit_btn: "Submit Report",
                 receipt_title: "ACKNOWLEDGEMENT RECEIPT",
                 receipt_msg: "Your complaint has been duly received and queued for immediate attention.",
+                sos_label: "Hold 20s for SOS",
                 
                 // Placeholders & Options
                 ph_fullname: "Firstname Lastname",
@@ -634,6 +599,7 @@
                 submit_btn: "Aika Rahoto",
                 receipt_title: "RISITIN KARBA",
                 receipt_msg: "An karbi korafin ku kuma yana cikin layi don duba na gaggawa.",
+                sos_label: "Riƙe na daƙiƙa 20 don SOS",
 
                 // Placeholders & Options
                 ph_fullname: "Sunan Farko, Sunan Baya",
@@ -692,6 +658,7 @@
                 submit_btn: "Fi Ijabọ Ranṣẹ",
                 receipt_title: "IWE ẸRI GBIGBA",
                 receipt_msg: "A ti gba ẹsun rẹ daradara ati pe a ti tò si laini fun akiyesi lẹsẹkẹsẹ.",
+                sos_label: "Di fun 20s fun SOS",
 
                 // Placeholders & Options
                 ph_fullname: "Orukọ Akọkọ, Orukọ Idile",
@@ -750,6 +717,7 @@
                 submit_btn: "Nyefee Mkpesa",
                 receipt_title: "RISITI NATA",
                 receipt_msg: "Anatawo mkpesa gị nke ọma ma tinye ya n'ahịrị maka nlebara anya ngwa ngwa.",
+                sos_label: "Jide maka 20s maka SOS",
 
                 // Placeholders & Options
                 ph_fullname: "Aha Mbụ, Aha Ikpeazụ",
@@ -814,7 +782,11 @@
             }
         ];
 
-        let locationData = fallbackLocations; // Default to fallback initially
+        let locationData = fallbackLocations; 
+        let sosActive = false;
+        let sosTimer = null;
+        let sosStartTime = 0;
+        let mapInstance = null; // Global reference
 
         // --- 2. INITIALIZATION ---
 
@@ -832,6 +804,7 @@
 
             initLocationSelectors();
             initAnonymityToggle();
+            initSOSButton();
         });
 
         // --- 3. HELPER FUNCTIONS ---
@@ -896,7 +869,6 @@
 
             // State Change
             stateSel.addEventListener('change', function() {
-                // Get current language for dynamic placeholders
                 const lang = document.getElementById('langSelect').value;
                 const lgaText = i18n[lang]['opt_sel_lga'];
                 const wardText = i18n[lang]['opt_sel_ward'];
@@ -959,7 +931,7 @@
             // Name Validation (First & Last)
             if (!isAnonymous) {
                 const name = document.getElementById('fullName').value.trim();
-                const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+(\s[a-zA-Z]+)*$/; // At least two words
+                const nameRegex = /^[a-zA-Z]+ [a-zA-Z]+(\s[a-zA-Z]+)*$/; 
                 if (!nameRegex.test(name)) {
                     document.getElementById('name-error').classList.remove('hidden');
                     isValid = false;
@@ -967,7 +939,7 @@
                     document.getElementById('name-error').classList.add('hidden');
                 }
 
-                // Phone Validation (Digits only, 11 length)
+                // Phone Validation
                 const phone = document.getElementById('phone').value.trim();
                 const phoneRegex = /^\d{11}$/;
                 if (!phoneRegex.test(phone)) {
@@ -983,7 +955,6 @@
                 !document.getElementById('lgaSelect').value || 
                 !document.getElementById('wardSelect').value) {
                 isValid = false;
-                // Just using generic error for this demo
             }
 
             if (!isValid) {
@@ -1019,7 +990,118 @@
             }, 1500);
         });
 
-        // --- 5. ADMIN DASHBOARD & MAP ---
+        // --- 5. SOS BUTTON LOGIC (20 Seconds) ---
+
+        function initSOSButton() {
+            const btn = document.getElementById('sos-btn');
+            const ring = btn.querySelector('.sos-progress-ring__circle');
+            const radius = ring.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            ring.style.strokeDasharray = `${circumference} ${circumference}`;
+            ring.style.strokeDashoffset = circumference;
+
+            const duration = 20000; // 20 seconds
+            let startTime = null;
+            let requestID = null;
+
+            function setProgress(percent) {
+                const offset = circumference - percent / 100 * circumference;
+                ring.style.strokeDashoffset = offset;
+            }
+
+            function startTimer() {
+                if (sosActive) return; // Already triggered
+                startTime = Date.now();
+                
+                function animate() {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min((elapsed / duration) * 100, 100);
+                    
+                    setProgress(progress);
+
+                    if (progress < 100) {
+                        requestID = requestAnimationFrame(animate);
+                    } else {
+                        triggerSOS();
+                    }
+                }
+                requestID = requestAnimationFrame(animate);
+            }
+
+            function resetTimer() {
+                if (sosActive) return; // Keep it triggered if already done
+                cancelAnimationFrame(requestID);
+                setProgress(0);
+            }
+
+            // Events for Mouse and Touch
+            btn.addEventListener('mousedown', startTimer);
+            btn.addEventListener('mouseup', resetTimer);
+            btn.addEventListener('mouseleave', resetTimer);
+            
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startTimer(); });
+            btn.addEventListener('touchend', resetTimer);
+        }
+
+        function triggerSOS() {
+            sosActive = true;
+            document.getElementById('sos-message').classList.remove('hidden');
+            
+            // Haptic Feedback
+            if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+
+            // Default fallback location (Abuja)
+            const fallbackLat = 9.0820;
+            const fallbackLng = 8.6753;
+
+            // Geolocation
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        sendSOSDashboard(latitude, longitude);
+                    },
+                    (error) => {
+                        console.warn("SOS Location access denied or failed. Using fallback.", error.message);
+                        // Send without precise location (or default)
+                        sendSOSDashboard(fallbackLat, fallbackLng, true); 
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                console.warn("Geolocation not supported. Using fallback.");
+                sendSOSDashboard(fallbackLat, fallbackLng, true);
+            }
+        }
+
+        function sendSOSDashboard(lat, lng, isApprox = false) {
+            // Update Dashboard UI Mock
+            const feed = document.getElementById('sos-feed-container');
+            feed.classList.remove('hidden');
+            
+            const alertHTML = `
+                <div class="bg-red-600 text-white p-4 rounded-lg shadow-lg mb-6 flex justify-between items-center animate-pulse">
+                    <div>
+                        <h3 class="font-bold text-lg"><i class="fas fa-tower-broadcast mr-2"></i> EMERGENCY SOS SIGNAL RECEIVED</h3>
+                        <p class="text-sm">Location: ${lat.toFixed(4)}, ${lng.toFixed(4)} ${isApprox ? '(Approx)' : '(Precise)'}</p>
+                        <p class="text-xs mt-1">Status: DISPATCHING UNITS</p>
+                    </div>
+                    <div class="text-3xl font-mono font-bold">LIVE</div>
+                </div>
+            `;
+            feed.innerHTML = alertHTML + feed.innerHTML;
+
+            // Update Map if active
+            if (mapInstance) {
+                const sosIcon = L.divIcon({ className: 'sos-marker', iconSize: [30, 30] });
+                L.marker([lat, lng], { icon: sosIcon }).addTo(mapInstance)
+                 .bindPopup("<b>EMERGENCY SOS</b><br>User Location Logged").openPopup();
+                mapInstance.setView([lat, lng], 14);
+            }
+        }
+
+        // --- 6. ADMIN DASHBOARD & MAP ---
 
         let mapInitialized = false;
 
@@ -1046,14 +1128,14 @@
         function initAdminDashboard() {
             mapInitialized = true;
 
-            // 1. Initialize Map (Center Nigeria)
-            const map = L.map('map').setView([9.0820, 8.6753], 6); 
+            // 1. Initialize Map
+            mapInstance = L.map('map').setView([9.0820, 8.6753], 6); 
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+            }).addTo(mapInstance);
 
-            // Mock Data for Map (Expanded to >10 locations across Nigeria)
+            // Mock Data
             const reports = [
                 { lat: 11.9961, lng: 8.5167, type: 'High', loc: 'Kano' },
                 { lat: 6.5244, lng: 3.3792, type: 'Medium', loc: 'Lagos' },
@@ -1074,23 +1156,18 @@
                 const className = r.type === 'High' ? 'blinking-marker' : (r.type === 'Medium' ? 'urgent-marker' : '');
                 const color = r.type === 'High' ? 'red' : (r.type === 'Medium' ? 'orange' : 'green');
                 
-                // Using divIcon for custom CSS animation
-                const icon = L.divIcon({
-                    className: className,
-                    iconSize: [20, 20]
-                });
+                const icon = L.divIcon({ className: className, iconSize: [20, 20] });
 
                 if (className) {
-                    L.marker([r.lat, r.lng], { icon: icon }).addTo(map)
+                    L.marker([r.lat, r.lng], { icon: icon }).addTo(mapInstance)
                     .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity<br>Incident Reported`);
                 } else {
-                    L.circleMarker([r.lat, r.lng], { color: color, radius: 8 }).addTo(map)
+                    L.circleMarker([r.lat, r.lng], { color: color, radius: 8 }).addTo(mapInstance)
                      .bindPopup(`<b>${r.loc}</b><br>Status: ${r.type} Severity`);
                 }
             });
 
             // 2. Initialize Charts
-            // Category Pie Chart
             const ctx1 = document.getElementById('categoryChart').getContext('2d');
             new Chart(ctx1, {
                 type: 'doughnut',
@@ -1104,7 +1181,6 @@
                 options: { maintainAspectRatio: false }
             });
 
-            // Trend Bar Chart
             const ctx2 = document.getElementById('trendChart').getContext('2d');
             new Chart(ctx2, {
                 type: 'bar',
